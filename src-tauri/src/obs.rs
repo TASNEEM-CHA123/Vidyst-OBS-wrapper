@@ -1911,7 +1911,10 @@ impl ObsService {
             }
             tokio::time::sleep(Duration::from_millis(300)).await;
         }
-        self.emit_event("source_connection", json!({ "source": "camera", "connected": connected }));
+        self.emit_event(
+            "source_connection",
+            json!({ "source": "camera", "connected": connected }),
+        );
         self.snapshot().await
     }
 
@@ -2036,7 +2039,10 @@ impl ObsService {
             }
             tokio::time::sleep(Duration::from_millis(250)).await;
         }
-        self.emit_event("source_connection", json!({ "source": "screen", "connected": connected }));
+        self.emit_event(
+            "source_connection",
+            json!({ "source": "screen", "connected": connected }),
+        );
         self.snapshot().await
     }
 
@@ -2253,13 +2259,11 @@ impl ObsService {
     }
 
     async fn capture_latest_vertical_recording(&self) {
-        let directory = self
-            .settings
-            .read()
-            .await
-            .record_path
-            .clone()
-            .or_else(|| std::env::var("USERPROFILE").ok().map(|path| format!("{path}\\Videos")));
+        let directory = self.settings.read().await.record_path.clone().or_else(|| {
+            std::env::var("USERPROFILE")
+                .ok()
+                .map(|path| format!("{path}\\Videos"))
+        });
         let Some(directory) = directory else {
             return;
         };
@@ -2341,9 +2345,10 @@ impl ObsService {
 
         let settings = self.settings.read().await.clone();
         if vertical {
-            if let (Some(server), Some(key)) =
-                (settings.stream_server.as_deref(), settings::read_stream_key())
-            {
+            if let (Some(server), Some(key)) = (
+                settings.stream_server.as_deref(),
+                settings::read_stream_key(),
+            ) {
                 set_vertical_stream_destination(&client, server, &key).await?;
             }
         }
@@ -2654,7 +2659,12 @@ async fn call_vertical_data(client: &Client, request_type: &str, data: Value) ->
             request_data: &data,
         })
         .await?;
-    if response.response_data.get("success").and_then(Value::as_bool) == Some(false) {
+    if response
+        .response_data
+        .get("success")
+        .and_then(Value::as_bool)
+        == Some(false)
+    {
         let detail = response
             .response_data
             .get("error")
@@ -2825,9 +2835,7 @@ async fn property_display_name(
         .ok()?;
     items
         .iter()
-        .find(|item| {
-            item.value.as_str() == Some(value) || item.value.to_string() == value
-        })
+        .find(|item| item.value.as_str() == Some(value) || item.value.to_string() == value)
         .map(|item| item.name.trim_start_matches(':').trim().to_owned())
 }
 
