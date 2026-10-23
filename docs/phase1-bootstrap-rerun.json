@@ -1,0 +1,1501 @@
+{
+  "generated_at_unix": 1792626498,
+  "main_canvas_uuid": "6c69626f-6273-4c00-9d88-c5136d61696e",
+  "vertical_canvas_uuid": "6fb3ced3-f3eb-4789-989b-3a3fd149df32",
+  "camera_group_uuid": "55078356-fbd6-4a36-8c3d-bc317982b0dc",
+  "camera": {
+    "name": "Vidyst_Camera_Raw",
+    "kind": "dshow_input",
+    "uuid": "3d9fb9dd-e78b-4764-a79e-3d629c491290",
+    "device_name": "HP Wide Vision HD Camera",
+    "device_value": "HP Wide Vision HD Camera:\\\\?\\usb#22vid_05c8&pid_03df&mi_00#226&4bb6aa2&0&0000#22{65e8773d-8f56-11d0-a3b9-00a0c9223196}\\global"
+  },
+  "screen": {
+    "name": "Vidyst_Screen",
+    "kind": "monitor_capture",
+    "uuid": "049a8cad-cf62-463c-a5f4-f63a6f7e69fc",
+    "device_name": "1920x1080 @ 0,0 (Primary Monitor)",
+    "device_value": "\\\\?\\DISPLAY#CMN14FF#4&f36c45c&0&UID8388688#{e6f07b5f-ee97-4a90-b076-33f57bf4eaa7}"
+  },
+  "mic": {
+    "name": "Vidyst_Mic",
+    "kind": "wasapi_input_capture",
+    "uuid": "0da06b00-a0f8-43fd-a290-466cf8466ad5",
+    "device_name": "Default",
+    "device_value": "default"
+  },
+  "screen_audio": {
+    "name": "Vidyst_Screen_Audio",
+    "kind": "wasapi_output_capture",
+    "uuid": "fd730bdc-0d3b-4378-b393-91a682be663e",
+    "device_name": "Default",
+    "device_value": "default"
+  },
+  "filters": {
+    "source": "Vidyst_Camera_Group",
+    "mask_filter": "Vidyst_Camera_Mask",
+    "mask_kind": "advanced_masks_filter",
+    "base_radius": 86.4,
+    "circle_filter": "Morph_To_Circle",
+    "circle_target_radius": 540.0,
+    "tile_filter": "Morph_To_Tile",
+    "tile_target_radius": 86.4,
+    "duration_ms": 350,
+    "enabled_after_bootstrap": true
+  },
+  "transition": {
+    "name": "Move",
+    "duration_ms": 350
+  },
+  "scenes": [
+    {
+      "id": "just_me",
+      "name": "Vidyst_just_me",
+      "main_scene_uuid": "250a4b57-2736-4001-9e05-ab72529ecc8d",
+      "vertical_scene_uuid": "1990fad2-c94a-445a-9ea5-d9ae4c64bfbb",
+      "main_screen": {
+        "source": "Vidyst_Screen",
+        "item_id": 1,
+        "enabled": false,
+        "index": 0,
+        "transform": null
+      },
+      "main_camera": {
+        "source": "Vidyst_Camera_Group",
+        "item_id": 2,
+        "enabled": true,
+        "index": 1,
+        "transform": {
+          "position_x": 38.399998,
+          "position_y": 32.399998,
+          "bounds_width": 1843.2,
+          "bounds_height": 1015.2,
+          "bounds_type": "OBS_BOUNDS_SCALE_OUTER",
+          "alignment": 5,
+          "bounds_alignment": 0,
+          "crop_to_bounds": true,
+          "radius_pct": 4.0
+        }
+      },
+      "vertical_screen": {
+        "source": "Vidyst_Screen",
+        "item_id": 1,
+        "enabled": false,
+        "index": 0,
+        "transform": null
+      },
+      "vertical_camera": {
+        "source": "Vidyst_Camera_Group",
+        "item_id": 2,
+        "enabled": true,
+        "index": 1,
+        "transform": {
+          "position_x": 32.399998,
+          "position_y": 38.399998,
+          "bounds_width": 1015.2,
+          "bounds_height": 1843.2,
+          "bounds_type": "OBS_BOUNDS_SCALE_OUTER",
+          "alignment": 5,
+          "bounds_alignment": 0,
+          "crop_to_bounds": true,
+          "radius_pct": 4.0
+        }
+      }
+    },
+    {
+      "id": "screen_cam",
+      "name": "Vidyst_screen_cam",
+      "main_scene_uuid": "b55efeea-6de3-4444-8b71-ccd17068211c",
+      "vertical_scene_uuid": "b9f59b27-fe93-4beb-85ea-307f9e7e4e7c",
+      "main_screen": {
+        "source": "Vidyst_Screen",
+        "item_id": 1,
+        "enabled": true,
+        "index": 0,
+        "transform": {
+          "position_x": 38.399998,
+          "position_y": 32.399998,
+          "bounds_width": 1843.2,
+          "bounds_height": 1015.2,
+          "bounds_type": "OBS_BOUNDS_SCALE_INNER",
+          "alignment": 5,
+          "bounds_alignment": 0,
+          "crop_to_bounds": false,
+          "radius_pct": 3.0
+        }
+      },
+      "main_camera": {
+        "source": "Vidyst_Camera_Group",
+        "item_id": 2,
+        "enabled": true,
+        "index": 1,
+        "transform": {
+          "position_x": 1593.6,
+          "position_y": 756.0,
+          "bounds_width": 270.0,
+          "bounds_height": 270.0,
+          "bounds_type": "OBS_BOUNDS_SCALE_OUTER",
+          "alignment": 5,
+          "bounds_alignment": 0,
+          "crop_to_bounds": true,
+          "radius_pct": 50.0
+        }
+      },
+      "vertical_screen": {
+        "source": "Vidyst_Screen",
+        "item_id": 1,
+        "enabled": true,
+        "index": 0,
+        "transform": {
+          "position_x": 21.6,
+          "position_y": 153.59999,
+          "bounds_width": 1036.7999,
+          "bounds_height": 960.0,
+          "bounds_type": "OBS_BOUNDS_SCALE_INNER",
+          "alignment": 5,
+          "bounds_alignment": 0,
+          "crop_to_bounds": false,
+          "radius_pct": 3.0
+        }
+      },
+      "vertical_camera": {
+        "source": "Vidyst_Camera_Group",
+        "item_id": 2,
+        "enabled": true,
+        "index": 1,
+        "transform": {
+          "position_x": 669.6,
+          "position_y": 1190.4,
+          "bounds_width": 345.6,
+          "bounds_height": 345.6,
+          "bounds_type": "OBS_BOUNDS_SCALE_OUTER",
+          "alignment": 5,
+          "bounds_alignment": 0,
+          "crop_to_bounds": true,
+          "radius_pct": 50.0
+        }
+      }
+    },
+    {
+      "id": "screen_cam_inv",
+      "name": "Vidyst_screen_cam_inv",
+      "main_scene_uuid": "27094c52-bbbc-4a0f-9936-4f7b0aea32c1",
+      "vertical_scene_uuid": "c16267b7-58f2-43ac-b25c-401fcbdf84e4",
+      "main_screen": {
+        "source": "Vidyst_Screen",
+        "item_id": 1,
+        "enabled": true,
+        "index": 0,
+        "transform": {
+          "position_x": 38.399998,
+          "position_y": 32.399998,
+          "bounds_width": 1843.2,
+          "bounds_height": 1015.2,
+          "bounds_type": "OBS_BOUNDS_SCALE_INNER",
+          "alignment": 5,
+          "bounds_alignment": 0,
+          "crop_to_bounds": false,
+          "radius_pct": 3.0
+        }
+      },
+      "main_camera": {
+        "source": "Vidyst_Camera_Group",
+        "item_id": 2,
+        "enabled": true,
+        "index": 1,
+        "transform": {
+          "position_x": 57.6,
+          "position_y": 756.0,
+          "bounds_width": 270.0,
+          "bounds_height": 270.0,
+          "bounds_type": "OBS_BOUNDS_SCALE_OUTER",
+          "alignment": 5,
+          "bounds_alignment": 0,
+          "crop_to_bounds": true,
+          "radius_pct": 50.0
+        }
+      },
+      "vertical_screen": {
+        "source": "Vidyst_Screen",
+        "item_id": 1,
+        "enabled": true,
+        "index": 0,
+        "transform": {
+          "position_x": 21.6,
+          "position_y": 153.59999,
+          "bounds_width": 1036.7999,
+          "bounds_height": 960.0,
+          "bounds_type": "OBS_BOUNDS_SCALE_INNER",
+          "alignment": 5,
+          "bounds_alignment": 0,
+          "crop_to_bounds": false,
+          "radius_pct": 3.0
+        }
+      },
+      "vertical_camera": {
+        "source": "Vidyst_Camera_Group",
+        "item_id": 2,
+        "enabled": true,
+        "index": 1,
+        "transform": {
+          "position_x": 64.799995,
+          "position_y": 1190.4,
+          "bounds_width": 345.6,
+          "bounds_height": 345.6,
+          "bounds_type": "OBS_BOUNDS_SCALE_OUTER",
+          "alignment": 5,
+          "bounds_alignment": 0,
+          "crop_to_bounds": true,
+          "radius_pct": 50.0
+        }
+      }
+    },
+    {
+      "id": "screen_tile",
+      "name": "Vidyst_screen_tile",
+      "main_scene_uuid": "d5df4c4c-59c6-46ee-8b12-e3b8e8af827a",
+      "vertical_scene_uuid": "74388c61-bbc6-47c8-a0b2-69777ce72178",
+      "main_screen": {
+        "source": "Vidyst_Screen",
+        "item_id": 1,
+        "enabled": true,
+        "index": 0,
+        "transform": {
+          "position_x": 38.399998,
+          "position_y": 32.399998,
+          "bounds_width": 1843.2,
+          "bounds_height": 1015.2,
+          "bounds_type": "OBS_BOUNDS_SCALE_INNER",
+          "alignment": 5,
+          "bounds_alignment": 0,
+          "crop_to_bounds": false,
+          "radius_pct": 3.0
+        }
+      },
+      "main_camera": {
+        "source": "Vidyst_Camera_Group",
+        "item_id": 2,
+        "enabled": true,
+        "index": 1,
+        "transform": {
+          "position_x": 1420.8,
+          "position_y": 734.4,
+          "bounds_width": 422.4,
+          "bounds_height": 270.0,
+          "bounds_type": "OBS_BOUNDS_SCALE_OUTER",
+          "alignment": 5,
+          "bounds_alignment": 0,
+          "crop_to_bounds": true,
+          "radius_pct": 8.0
+        }
+      },
+      "vertical_screen": {
+        "source": "Vidyst_Screen",
+        "item_id": 1,
+        "enabled": true,
+        "index": 0,
+        "transform": {
+          "position_x": 32.399998,
+          "position_y": 76.799995,
+          "bounds_width": 1015.2,
+          "bounds_height": 998.39996,
+          "bounds_type": "OBS_BOUNDS_SCALE_INNER",
+          "alignment": 5,
+          "bounds_alignment": 0,
+          "crop_to_bounds": false,
+          "radius_pct": 3.0
+        }
+      },
+      "vertical_camera": {
+        "source": "Vidyst_Camera_Group",
+        "item_id": 2,
+        "enabled": true,
+        "index": 1,
+        "transform": {
+          "position_x": 32.399998,
+          "position_y": 1113.6,
+          "bounds_width": 1015.2,
+          "bounds_height": 729.6,
+          "bounds_type": "OBS_BOUNDS_SCALE_OUTER",
+          "alignment": 5,
+          "bounds_alignment": 0,
+          "crop_to_bounds": true,
+          "radius_pct": 6.0
+        }
+      }
+    },
+    {
+      "id": "screen_tile_inv",
+      "name": "Vidyst_screen_tile_inv",
+      "main_scene_uuid": "ae995550-664d-47a3-9f9d-720a1d68e5d7",
+      "vertical_scene_uuid": "aec6c973-ba3c-4a65-a449-d49183be5f48",
+      "main_screen": {
+        "source": "Vidyst_Screen",
+        "item_id": 1,
+        "enabled": true,
+        "index": 0,
+        "transform": {
+          "position_x": 38.399998,
+          "position_y": 32.399998,
+          "bounds_width": 1843.2,
+          "bounds_height": 1015.2,
+          "bounds_type": "OBS_BOUNDS_SCALE_INNER",
+          "alignment": 5,
+          "bounds_alignment": 0,
+          "crop_to_bounds": false,
+          "radius_pct": 3.0
+        }
+      },
+      "main_camera": {
+        "source": "Vidyst_Camera_Group",
+        "item_id": 2,
+        "enabled": true,
+        "index": 1,
+        "transform": {
+          "position_x": 76.799995,
+          "position_y": 734.4,
+          "bounds_width": 422.4,
+          "bounds_height": 270.0,
+          "bounds_type": "OBS_BOUNDS_SCALE_OUTER",
+          "alignment": 5,
+          "bounds_alignment": 0,
+          "crop_to_bounds": true,
+          "radius_pct": 8.0
+        }
+      },
+      "vertical_screen": {
+        "source": "Vidyst_Screen",
+        "item_id": 1,
+        "enabled": true,
+        "index": 0,
+        "transform": {
+          "position_x": 32.399998,
+          "position_y": 844.8,
+          "bounds_width": 1015.2,
+          "bounds_height": 998.39996,
+          "bounds_type": "OBS_BOUNDS_SCALE_INNER",
+          "alignment": 5,
+          "bounds_alignment": 0,
+          "crop_to_bounds": false,
+          "radius_pct": 3.0
+        }
+      },
+      "vertical_camera": {
+        "source": "Vidyst_Camera_Group",
+        "item_id": 2,
+        "enabled": true,
+        "index": 1,
+        "transform": {
+          "position_x": 32.399998,
+          "position_y": 76.799995,
+          "bounds_width": 1015.2,
+          "bounds_height": 729.6,
+          "bounds_type": "OBS_BOUNDS_SCALE_OUTER",
+          "alignment": 5,
+          "bounds_alignment": 0,
+          "crop_to_bounds": true,
+          "radius_pct": 6.0
+        }
+      }
+    },
+    {
+      "id": "side_by_side",
+      "name": "Vidyst_side_by_side",
+      "main_scene_uuid": "f714b065-edf9-4fb0-9179-816830378130",
+      "vertical_scene_uuid": "a64f8dcb-aab7-4a70-b525-026b5b050d3e",
+      "main_screen": {
+        "source": "Vidyst_Screen",
+        "item_id": 1,
+        "enabled": true,
+        "index": 0,
+        "transform": {
+          "position_x": 38.399998,
+          "position_y": 32.399998,
+          "bounds_width": 1363.2,
+          "bounds_height": 1015.2,
+          "bounds_type": "OBS_BOUNDS_SCALE_INNER",
+          "alignment": 5,
+          "bounds_alignment": 0,
+          "crop_to_bounds": false,
+          "radius_pct": 3.0
+        }
+      },
+      "main_camera": {
+        "source": "Vidyst_Camera_Group",
+        "item_id": 2,
+        "enabled": true,
+        "index": 1,
+        "transform": {
+          "position_x": 1440.0,
+          "position_y": 32.399998,
+          "bounds_width": 441.6,
+          "bounds_height": 1015.2,
+          "bounds_type": "OBS_BOUNDS_SCALE_OUTER",
+          "alignment": 5,
+          "bounds_alignment": 0,
+          "crop_to_bounds": true,
+          "radius_pct": 4.0
+        }
+      },
+      "vertical_screen": {
+        "source": "Vidyst_Screen",
+        "item_id": 1,
+        "enabled": true,
+        "index": 0,
+        "transform": {
+          "position_x": 32.399998,
+          "position_y": 76.799995,
+          "bounds_width": 1015.2,
+          "bounds_height": 998.39996,
+          "bounds_type": "OBS_BOUNDS_SCALE_INNER",
+          "alignment": 5,
+          "bounds_alignment": 0,
+          "crop_to_bounds": false,
+          "radius_pct": 3.0
+        }
+      },
+      "vertical_camera": {
+        "source": "Vidyst_Camera_Group",
+        "item_id": 2,
+        "enabled": true,
+        "index": 1,
+        "transform": {
+          "position_x": 32.399998,
+          "position_y": 1113.6,
+          "bounds_width": 1015.2,
+          "bounds_height": 729.6,
+          "bounds_type": "OBS_BOUNDS_SCALE_OUTER",
+          "alignment": 5,
+          "bounds_alignment": 0,
+          "crop_to_bounds": true,
+          "radius_pct": 4.0
+        }
+      }
+    },
+    {
+      "id": "side_by_side_inv",
+      "name": "Vidyst_side_by_side_inv",
+      "main_scene_uuid": "98b158e6-b0b8-4292-8e9a-2ef9d2f17eac",
+      "vertical_scene_uuid": "603322fc-75b0-4931-9e7f-12fb61af8803",
+      "main_screen": {
+        "source": "Vidyst_Screen",
+        "item_id": 1,
+        "enabled": true,
+        "index": 0,
+        "transform": {
+          "position_x": 518.4,
+          "position_y": 32.399998,
+          "bounds_width": 1363.2,
+          "bounds_height": 1015.2,
+          "bounds_type": "OBS_BOUNDS_SCALE_INNER",
+          "alignment": 5,
+          "bounds_alignment": 0,
+          "crop_to_bounds": false,
+          "radius_pct": 3.0
+        }
+      },
+      "main_camera": {
+        "source": "Vidyst_Camera_Group",
+        "item_id": 2,
+        "enabled": true,
+        "index": 1,
+        "transform": {
+          "position_x": 38.399998,
+          "position_y": 32.399998,
+          "bounds_width": 441.6,
+          "bounds_height": 1015.2,
+          "bounds_type": "OBS_BOUNDS_SCALE_OUTER",
+          "alignment": 5,
+          "bounds_alignment": 0,
+          "crop_to_bounds": true,
+          "radius_pct": 4.0
+        }
+      },
+      "vertical_screen": {
+        "source": "Vidyst_Screen",
+        "item_id": 1,
+        "enabled": true,
+        "index": 0,
+        "transform": {
+          "position_x": 32.399998,
+          "position_y": 844.8,
+          "bounds_width": 1015.2,
+          "bounds_height": 998.39996,
+          "bounds_type": "OBS_BOUNDS_SCALE_INNER",
+          "alignment": 5,
+          "bounds_alignment": 0,
+          "crop_to_bounds": false,
+          "radius_pct": 3.0
+        }
+      },
+      "vertical_camera": {
+        "source": "Vidyst_Camera_Group",
+        "item_id": 2,
+        "enabled": true,
+        "index": 1,
+        "transform": {
+          "position_x": 32.399998,
+          "position_y": 76.799995,
+          "bounds_width": 1015.2,
+          "bounds_height": 729.6,
+          "bounds_type": "OBS_BOUNDS_SCALE_OUTER",
+          "alignment": 5,
+          "bounds_alignment": 0,
+          "crop_to_bounds": true,
+          "radius_pct": 4.0
+        }
+      }
+    },
+    {
+      "id": "screen_focus",
+      "name": "Vidyst_screen_focus",
+      "main_scene_uuid": "5cffc27d-b314-4095-bdd0-929c30402c62",
+      "vertical_scene_uuid": "b0891f06-9799-498e-bed3-b36e8c664d60",
+      "main_screen": {
+        "source": "Vidyst_Screen",
+        "item_id": 1,
+        "enabled": true,
+        "index": 0,
+        "transform": {
+          "position_x": 38.399998,
+          "position_y": 32.399998,
+          "bounds_width": 1843.2,
+          "bounds_height": 1015.2,
+          "bounds_type": "OBS_BOUNDS_SCALE_INNER",
+          "alignment": 5,
+          "bounds_alignment": 0,
+          "crop_to_bounds": false,
+          "radius_pct": 3.0
+        }
+      },
+      "main_camera": {
+        "source": "Vidyst_Camera_Group",
+        "item_id": 2,
+        "enabled": false,
+        "index": 1,
+        "transform": null
+      },
+      "vertical_screen": {
+        "source": "Vidyst_Screen",
+        "item_id": 1,
+        "enabled": true,
+        "index": 0,
+        "transform": {
+          "position_x": 21.6,
+          "position_y": 384.0,
+          "bounds_width": 1036.7999,
+          "bounds_height": 1152.0,
+          "bounds_type": "OBS_BOUNDS_SCALE_INNER",
+          "alignment": 5,
+          "bounds_alignment": 0,
+          "crop_to_bounds": false,
+          "radius_pct": 3.0
+        }
+      },
+      "vertical_camera": {
+        "source": "Vidyst_Camera_Group",
+        "item_id": 2,
+        "enabled": false,
+        "index": 1,
+        "transform": null
+      }
+    }
+  ],
+  "requests": [
+    {
+      "label": "GetCanvasList",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneTransitionList",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneList(Vidyst_Camera_Group)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetInputList",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetInputSettings(Vidyst_Camera_Raw)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetInputPropertiesListPropertyItems(Vidyst_Camera_Raw.video_device_id)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetInputList(Vidyst_Screen)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetInputList(after create Vidyst_Screen)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneItemList(55078356-fbd6-4a36-8c3d-bc317982b0dc)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemEnabled(4, false)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetInputPropertiesListPropertyItems(Vidyst_Screen.monitor_id)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetInputList(after Vidyst_Screen)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetInputList(Vidyst_Mic)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetInputList(after create Vidyst_Mic)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneItemList(55078356-fbd6-4a36-8c3d-bc317982b0dc)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemEnabled(5, true)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetInputPropertiesListPropertyItems(Vidyst_Mic.device_id)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetInputList(after Vidyst_Mic)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetInputList(Vidyst_Screen_Audio)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetInputList(after create Vidyst_Screen_Audio)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneItemList(55078356-fbd6-4a36-8c3d-bc317982b0dc)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemEnabled(6, true)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetInputPropertiesListPropertyItems(Vidyst_Screen_Audio.device_id)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetInputList(after Vidyst_Screen_Audio)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneItemList(55078356-fbd6-4a36-8c3d-bc317982b0dc)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemEnabled(1, true)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemTransform(Vidyst_Camera_Raw fill group)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSourceFilterList(Vidyst_Camera_Group)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSourceFilterSettings(Vidyst_Camera_Mask)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSourceFilterSettings(Morph_To_Circle)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSourceFilterSettings(Morph_To_Tile)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSourceFilterIndex(Vidyst_Camera_Mask, 0)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSourceFilterEnabled(Morph_To_Circle, false)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSourceFilterEnabled(Morph_To_Tile, false)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSourceFilterEnabled(Vidyst_Camera_Mask, true)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSourceFilterList(after setup)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetCurrentSceneTransition(Move)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetCurrentSceneTransitionDuration(350)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneList(Vidyst_just_me)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneList(canvas 6fb3ced3-f3eb-4789-989b-3a3fd149df32)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneItemList(250a4b57-2736-4001-9e05-ab72529ecc8d)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemIndex(Vidyst_Screen, 0)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemEnabled(1, false)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneItemList(250a4b57-2736-4001-9e05-ab72529ecc8d)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemTransform(Vidyst_Camera_Group)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemIndex(Vidyst_Camera_Group, 1)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemEnabled(2, true)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneItemList(1990fad2-c94a-445a-9ea5-d9ae4c64bfbb)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemIndex(Vidyst_Screen, 0)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemEnabled(1, false)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneItemList(1990fad2-c94a-445a-9ea5-d9ae4c64bfbb)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemTransform(Vidyst_Camera_Group)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemIndex(Vidyst_Camera_Group, 1)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemEnabled(2, true)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneList(Vidyst_screen_cam)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneList(canvas 6fb3ced3-f3eb-4789-989b-3a3fd149df32)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneItemList(b55efeea-6de3-4444-8b71-ccd17068211c)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemTransform(Vidyst_Screen)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemIndex(Vidyst_Screen, 0)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemEnabled(1, true)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneItemList(b55efeea-6de3-4444-8b71-ccd17068211c)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemTransform(Vidyst_Camera_Group)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemIndex(Vidyst_Camera_Group, 1)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemEnabled(2, true)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneItemList(b9f59b27-fe93-4beb-85ea-307f9e7e4e7c)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemTransform(Vidyst_Screen)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemIndex(Vidyst_Screen, 0)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemEnabled(1, true)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneItemList(b9f59b27-fe93-4beb-85ea-307f9e7e4e7c)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemTransform(Vidyst_Camera_Group)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemIndex(Vidyst_Camera_Group, 1)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemEnabled(2, true)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneList(Vidyst_screen_cam_inv)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneList(canvas 6fb3ced3-f3eb-4789-989b-3a3fd149df32)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneItemList(27094c52-bbbc-4a0f-9936-4f7b0aea32c1)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemTransform(Vidyst_Screen)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemIndex(Vidyst_Screen, 0)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemEnabled(1, true)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneItemList(27094c52-bbbc-4a0f-9936-4f7b0aea32c1)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemTransform(Vidyst_Camera_Group)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemIndex(Vidyst_Camera_Group, 1)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemEnabled(2, true)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneItemList(c16267b7-58f2-43ac-b25c-401fcbdf84e4)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemTransform(Vidyst_Screen)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemIndex(Vidyst_Screen, 0)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemEnabled(1, true)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneItemList(c16267b7-58f2-43ac-b25c-401fcbdf84e4)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemTransform(Vidyst_Camera_Group)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemIndex(Vidyst_Camera_Group, 1)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemEnabled(2, true)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneList(Vidyst_screen_tile)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneList(canvas 6fb3ced3-f3eb-4789-989b-3a3fd149df32)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneItemList(d5df4c4c-59c6-46ee-8b12-e3b8e8af827a)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemTransform(Vidyst_Screen)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemIndex(Vidyst_Screen, 0)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemEnabled(1, true)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneItemList(d5df4c4c-59c6-46ee-8b12-e3b8e8af827a)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemTransform(Vidyst_Camera_Group)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemIndex(Vidyst_Camera_Group, 1)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemEnabled(2, true)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneItemList(74388c61-bbc6-47c8-a0b2-69777ce72178)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemTransform(Vidyst_Screen)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemIndex(Vidyst_Screen, 0)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemEnabled(1, true)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneItemList(74388c61-bbc6-47c8-a0b2-69777ce72178)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemTransform(Vidyst_Camera_Group)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemIndex(Vidyst_Camera_Group, 1)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemEnabled(2, true)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneList(Vidyst_screen_tile_inv)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneList(canvas 6fb3ced3-f3eb-4789-989b-3a3fd149df32)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneItemList(ae995550-664d-47a3-9f9d-720a1d68e5d7)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemTransform(Vidyst_Screen)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemIndex(Vidyst_Screen, 0)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemEnabled(1, true)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneItemList(ae995550-664d-47a3-9f9d-720a1d68e5d7)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemTransform(Vidyst_Camera_Group)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemIndex(Vidyst_Camera_Group, 1)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemEnabled(2, true)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneItemList(aec6c973-ba3c-4a65-a449-d49183be5f48)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemTransform(Vidyst_Screen)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemIndex(Vidyst_Screen, 0)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemEnabled(1, true)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneItemList(aec6c973-ba3c-4a65-a449-d49183be5f48)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemTransform(Vidyst_Camera_Group)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemIndex(Vidyst_Camera_Group, 1)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemEnabled(2, true)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneList(Vidyst_side_by_side)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneList(canvas 6fb3ced3-f3eb-4789-989b-3a3fd149df32)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneItemList(f714b065-edf9-4fb0-9179-816830378130)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemTransform(Vidyst_Screen)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemIndex(Vidyst_Screen, 0)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemEnabled(1, true)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneItemList(f714b065-edf9-4fb0-9179-816830378130)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemTransform(Vidyst_Camera_Group)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemIndex(Vidyst_Camera_Group, 1)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemEnabled(2, true)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneItemList(a64f8dcb-aab7-4a70-b525-026b5b050d3e)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemTransform(Vidyst_Screen)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemIndex(Vidyst_Screen, 0)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemEnabled(1, true)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneItemList(a64f8dcb-aab7-4a70-b525-026b5b050d3e)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemTransform(Vidyst_Camera_Group)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemIndex(Vidyst_Camera_Group, 1)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemEnabled(2, true)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneList(Vidyst_side_by_side_inv)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneList(canvas 6fb3ced3-f3eb-4789-989b-3a3fd149df32)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneItemList(98b158e6-b0b8-4292-8e9a-2ef9d2f17eac)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemTransform(Vidyst_Screen)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemIndex(Vidyst_Screen, 0)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemEnabled(1, true)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneItemList(98b158e6-b0b8-4292-8e9a-2ef9d2f17eac)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemTransform(Vidyst_Camera_Group)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemIndex(Vidyst_Camera_Group, 1)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemEnabled(2, true)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneItemList(603322fc-75b0-4931-9e7f-12fb61af8803)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemTransform(Vidyst_Screen)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemIndex(Vidyst_Screen, 0)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemEnabled(1, true)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneItemList(603322fc-75b0-4931-9e7f-12fb61af8803)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemTransform(Vidyst_Camera_Group)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemIndex(Vidyst_Camera_Group, 1)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemEnabled(2, true)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneList(Vidyst_screen_focus)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneList(canvas 6fb3ced3-f3eb-4789-989b-3a3fd149df32)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneItemList(5cffc27d-b314-4095-bdd0-929c30402c62)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemTransform(Vidyst_Screen)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemIndex(Vidyst_Screen, 0)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemEnabled(1, true)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneItemList(5cffc27d-b314-4095-bdd0-929c30402c62)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemIndex(Vidyst_Camera_Group, 1)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemEnabled(2, false)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneItemList(b0891f06-9799-498e-bed3-b36e8c664d60)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemTransform(Vidyst_Screen)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemIndex(Vidyst_Screen, 0)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemEnabled(1, true)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetSceneItemList(b0891f06-9799-498e-bed3-b36e8c664d60)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemIndex(Vidyst_Camera_Group, 1)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "SetSceneItemEnabled(2, false)",
+      "ok": true,
+      "error": null
+    },
+    {
+      "label": "GetCurrentSceneTransition",
+      "ok": true,
+      "error": null
+    }
+  ]
+}

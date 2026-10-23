@@ -1,0 +1,39 @@
+# ---- Secrets & local configuration (NEVER COMMIT) ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+
+# ---- Local OBS backups (may contain WebSocket passwords / scene data) ----
+/backups/
+*.bak
+
+# ---- Rust build artifacts ----
+/target/
+**/target/
+**/*.rs.bk
+
+# ---- Node / Svelte build artifacts ----
+/node_modules/
+**/node_modules/
+/ui/dist/
+/ui/.svelte-kit/
+/ui/.vite/
+.vite/
+
+# ---- Tauri generated files ----
+/src-tauri/gen/
+/src-tauri/target/
+
+# ---- Logs & local reports ----
+*.log
+.spike/
+
+# ---- Editor / OS noise ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini

@@ -1,0 +1,194 @@
+﻿{
+  "installation": {
+    "os": "windows",
+    "binary": "C:\\Program Files\\obs-studio/bin/64bit/obs64.exe",
+    "system_plugin_dirs": [
+      "C:\\ProgramData\\obs-studio/plugins",
+      "C:\\Program Files\\obs-studio/obs-plugins/64bit"
+    ],
+    "user_plugin_dirs": [
+      "C:\\Users\\HI-TECH\\AppData\\Roaming\\obs-studio/plugins"
+    ],
+    "websocket_config": "C:\\Users\\HI-TECH\\AppData\\Roaming\\obs-studio/plugin_config/obs-websocket/config.json"
+  },
+  "websocket_credentials": "ObsConfig",
+  "websocket_reachable": true,
+  "runtime": {
+    "obs_studio_version": "32.2.2",
+    "obs_websocket_version": "5.7.4",
+    "rpc_version": 1,
+    "platform": "windows",
+    "platform_description": "Windows 11 Version 26H2",
+    "input_kind_count": 14,
+    "filter_kind_count": 44,
+    "transition_kind_count": 8,
+    "input_kinds": [
+      "image_source",
+      "color_source_v3",
+      "slideshow_v2",
+      "browser_source",
+      "ffmpeg_source",
+      "text_gdiplus_v3",
+      "text_ft2_source_v2",
+      "monitor_capture",
+      "window_capture",
+      "game_capture",
+      "dshow_input",
+      "wasapi_input_capture",
+      "wasapi_output_capture",
+      "wasapi_process_output_capture"
+    ],
+    "filter_kinds": [
+      "mask_filter",
+      "mask_filter_v2",
+      "crop_filter",
+      "gain_filter",
+      "basic_eq_filter",
+      "hdr_tonemap_filter",
+      "sdr_on_hdr_filter",
+      "color_filter",
+      "color_filter_v2",
+      "scale_filter",
+      "scroll_filter",
+      "gpu_delay",
+      "color_key_filter",
+      "color_key_filter_v2",
+      "clut_filter",
+      "sharpness_filter",
+      "sharpness_filter_v2",
+      "chroma_key_filter",
+      "chroma_key_filter_v2",
+      "async_delay_filter",
+      "noise_suppress_filter",
+      "noise_suppress_filter_v2",
+      "invert_polarity_filter",
+      "noise_gate_filter",
+      "compressor_filter",
+      "limiter_filter",
+      "expander_filter",
+      "upward_compressor_filter",
+      "luma_key_filter",
+      "luma_key_filter_v2",
+      "vst_filter",
+      "move_transition_override_filter",
+      "move_source_filter",
+      "move_source_swap_filter",
+      "move_value_filter",
+      "move_audio_value_filter",
+      "audio_move_filter",
+      "move_action_filter",
+      "move_audio_action_filter",
+      "move_directshow_filter",
+      "advanced_masks_filter",
+      "advanced_masks_filter_v2",
+      "background_removal",
+      "enhanceportrait"
+    ],
+    "transition_kinds": [
+      "cut_transition",
+      "fade_transition",
+      "swipe_transition",
+      "slide_transition",
+      "obs_stinger_transition",
+      "fade_to_color_transition",
+      "wipe_transition",
+      "move_transition"
+    ],
+    "canvas_list": [
+      {
+        "name": "Main",
+        "uuid": "6c69626f-6273-4c00-9d88-c5136d61696e",
+        "width": 1920,
+        "height": 1080,
+        "is_main": true
+      },
+      {
+        "name": "Aitum Vertical",
+        "uuid": "6fb3ced3-f3eb-4789-989b-3a3fd149df32",
+        "width": 1080,
+        "height": 1920,
+        "is_main": false
+      }
+    ],
+    "transition_instances": [
+      "Cut",
+      "Fade",
+      "Swipe",
+      "Move"
+    ],
+    "move_transition_instance": "Move"
+  },
+  "plugins": [
+    {
+      "key": "move_transition",
+      "name": "Move Transition",
+      "required": true,
+      "installed": true,
+      "evidence": [
+        "file: C:\\ProgramData\\obs-studio/plugins\\move-transition",
+        "file: C:\\ProgramData\\obs-studio/plugins\\move-transition\\bin\\64bit\\move-transition.dll",
+        "file: C:\\ProgramData\\obs-studio/plugins\\move-transition\\bin\\64bit\\move-transition.pdb",
+        "filter kind: move_source_filter"
+      ],
+      "install_url": "https://github.com/exeldro/obs-move-transition/releases",
+      "note": null
+    },
+    {
+      "key": "advanced_masks",
+      "name": "Advanced Masks",
+      "required": true,
+      "installed": true,
+      "evidence": [
+        "file: C:\\ProgramData\\obs-studio/plugins\\obs-advanced-masks",
+        "file: C:\\ProgramData\\obs-studio/plugins\\obs-advanced-masks\\bin\\64bit\\obs-advanced-masks.dll",
+        "file: C:\\ProgramData\\obs-studio/plugins\\obs-advanced-masks\\bin\\64bit\\obs-advanced-masks.pdb",
+        "filter kind: advanced_masks_filter"
+      ],
+      "install_url": "https://github.com/FiniteSingularity/obs-advanced-masks/releases",
+      "note": "OBS 30-32 needs the 'legacy' Windows package."
+    },
+    {
+      "key": "aitum_vertical",
+      "name": "Aitum Vertical",
+      "required": true,
+      "installed": true,
+      "evidence": [
+        "file: C:\\ProgramData\\obs-studio/plugins\\vertical-canvas",
+        "file: C:\\ProgramData\\obs-studio/plugins\\vertical-canvas\\bin\\64bit\\vertical-canvas.dll",
+        "file: C:\\ProgramData\\obs-studio/plugins\\vertical-canvas\\bin\\64bit\\vertical-canvas.pdb",
+        "vendor version: 1.6.6"
+      ],
+      "install_url": "https://github.com/Aitum/obs-vertical-canvas/releases",
+      "note": null
+    },
+    {
+      "key": "background_removal",
+      "name": "Background Removal",
+      "required": true,
+      "installed": true,
+      "evidence": [
+        "file: C:\\ProgramData\\obs-studio/plugins\\obs-backgroundremoval",
+        "file: C:\\ProgramData\\obs-studio/plugins\\obs-backgroundremoval\\bin\\64bit\\obs-backgroundremoval.dll",
+        "filter kind: background_removal"
+      ],
+      "install_url": "https://github.com/royshil/obs-backgroundremoval/releases",
+      "note": null
+    },
+    {
+      "key": "multi_rtmp",
+      "name": "Multi RTMP",
+      "required": true,
+      "installed": true,
+      "evidence": [
+        "file: C:\\ProgramData\\obs-studio/plugins\\obs-multi-rtmp",
+        "file: C:\\ProgramData\\obs-studio/plugins\\obs-multi-rtmp\\bin\\64bit\\obs-multi-rtmp.dll",
+        "file: C:\\ProgramData\\obs-studio/plugins\\obs-multi-rtmp\\bin\\64bit\\obs-multi-rtmp.pdb"
+      ],
+      "install_url": "https://github.com/sorayuki/obs-multi-rtmp/releases",
+      "note": null
+    }
+  ],
+  "warnings": [],
+  "ready": true,
+  "missing_plugins": []
+}

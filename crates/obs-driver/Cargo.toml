@@ -1,0 +1,19 @@
+[package]
+name = "vidyst-obs-driver"
+description = "OBS WebSocket driver for the Vidyst-OBS studio controller"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+futures-util = { workspace = true }
+obws = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+time = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+vidyst-layouts = { path = "../layouts" }
