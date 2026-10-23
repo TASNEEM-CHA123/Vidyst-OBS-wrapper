@@ -101,6 +101,13 @@ fn default_record_format() -> String {
 }
 
 pub fn config_dir(app: &AppHandle) -> Result<PathBuf> {
+    // Local development can point the app at an isolated state folder so test
+    // runs never overwrite the user's real settings.
+    if let Some(dir) = std::env::var_os("VIDYST_CONFIG_DIR") {
+        if !dir.is_empty() {
+            return Ok(PathBuf::from(dir));
+        }
+    }
     app.path()
         .app_config_dir()
         .context("resolve the application config directory")

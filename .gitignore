@@ -31,6 +31,10 @@
 *.log
 .spike/
 
+# ---- Local dev isolation (scene-collection state, recordings, captures) ----
+/.dev-state/
+/.dev-recordings/
+
 # ---- Editor / OS noise ----
 .vscode/
 .idea/
