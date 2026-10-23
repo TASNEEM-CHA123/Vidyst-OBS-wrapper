@@ -2,6 +2,7 @@
 
 > **Goal:** Build a Vidyst-style studio controller as a lightweight companion app on top of OBS Studio.
 > **Source docs:** [`project.md`](./project.md) · [`tech_stack.md`](./tech_stack.md) · [`phase.md`](./phase.md)
+> **Active execution plan:** [`TASKS-PHASE2-FINISH.md`](./TASKS-PHASE2-FINISH.md)
 > **Created:** 2026-10-22
 > **Platform:** Windows 11 26H2 (verified)
 > **Status:** **Phase 0 complete** — **Phase 1 complete** — **Phase 2: in progress (V1 demo working; streaming destinations still pending)**
@@ -251,6 +252,23 @@ Check each required plugin and note its version/status:
 - [x] **P2-39** README: install, OBS setup, plugins, troubleshooting, and known limitations. **Updated** with Phase 2 run instructions, feature notes, and the pending streaming-destination limitation.
 - [ ] **P2-40** Build a release installer and smoke-test it on a clean Windows profile if possible.
 
+### 5.8 Phase 2 finish program (active)
+
+> Detailed checklist, acceptance criteria, and evidence: [`TASKS-PHASE2-FINISH.md`](./TASKS-PHASE2-FINISH.md).
+> This program extends the unchecked Phase 2 tasks above; it does not replace them.
+
+- [x] **P2F-00** Repo baseline: secret-safe `.gitignore` + `.env.example`, baseline commit, `phase2-wip` tag, push to GitHub.
+- [x] **P2F-01** Verification baseline: UI check/build, fmt, check, 11 tests pass.
+- [ ] **P2F-02** Dev isolation: `Vidyst_Dev` scene collection, `VIDYST_CONFIG_DIR=.dev-state`, `devctl` + reset/restore scripts, clean real profile.
+- [ ] **P2F-03** Streaming bring-up: state machine + degraded partial failure, local MediaMTX, three cases, vertical audio + encoder validation, 30-minute soak (`P2-11` / `P2-45`).
+- [ ] **P2F-04** Background removal: diagnose model/filter, create once at bootstrap, toggle only, "Unavailable" state (`P2-24`).
+- [ ] **P2F-05** Preview performance + graceful degradation: 640 px, FPS setting, hidden/struggling pause, missing image fallback, no-camera placeholder (`P2-38` partial).
+- [ ] **P2F-06** Recording integrity: log split path, verify no silent gap, warn on fallback (`P2-10`).
+- [ ] **P2F-07** End-to-end matrix (`P2-35`).
+- [ ] **P2F-08** Performance/health metrics from OBS `GetStats` (`P2-37`).
+- [ ] **P2F-09** UI polish + visual parity + first-run health checklist (`P2-36`, `P2-38`).
+- [ ] **P2F-10** Release installer + clean-profile smoke test + `docs/phase2-results.md` + tick boxes + `P2-GATE` (`P2-40`).
+
 ### Phase 2 gate
 
 - [ ] **P2-GATE** Full V1 demo passes acceptance, docs are updated, and the user signs off on the implementation.
@@ -310,3 +328,6 @@ Check each required plugin and note its version/status:
 | 2026-10-22 | P1-09..P1-13 | Tests 1–4 passed: circle/tile morph, rapid 200 ms cadence, audio toggles, Aitum vertical sync | OBS restart populated Aitum `get_scenes`; `switch_scene` verified for all 8 |
 | 2026-10-22 | P1-14..P1-16 | Test 5 disconnect/reconnect + idempotent rerun passed with stable UUIDs; reports written; probes removed | Cleanup restored `Scene`, `Fade 300 ms`, `Vertical Scene`, and audio |
 | 2026-10-22 | P1-GATE | Phase 1 gate passed | `Phase 1: PASS`, 5/5 tests, 0 failed requests, 27 screenshots |
+| 2026-10-23 | P2F-00 | Secret-safe repo baseline committed, tagged `phase2-wip`, pushed to GitHub | Caught plaintext OBS password in `backups/`; backups + `.env` now ignored |
+| 2026-10-23 | P2F-01 | Verification baseline green | UI check 0/0, build OK, rustfmt applied, check OK, 11 tests pass |
+| 2026-10-23 | P2F-02..P2F-10 | Phase 2 finish program created | `TASKS-PHASE2-FINISH.md`; streaming moved early, dev isolation + reset plan added |
