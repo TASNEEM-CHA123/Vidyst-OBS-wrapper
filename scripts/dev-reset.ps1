@@ -28,6 +28,7 @@ $settings = [ordered]@{
     background_mode       = 'none'
     background_color      = '#0b0d12'
     background_image      = $null
+    preview_fps           = 15
 }
 $settings | ConvertTo-Json | Set-Content -Path (Join-Path $stateDir 'settings.json') -Encoding utf8
 

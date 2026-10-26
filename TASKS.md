@@ -5,7 +5,7 @@
 > **Active execution plan:** [`TASKS-PHASE2-FINISH.md`](./TASKS-PHASE2-FINISH.md)
 > **Created:** 2026-10-22
 > **Platform:** Windows 11 26H2 (verified)
-> **Status:** **Phase 0 complete** — **Phase 1 complete** — **Phase 2: in progress (V1 demo working; streaming destinations still pending)**
+> **Status:** **Phase 0 complete** — **Phase 1 complete** — **Phase 2: local V1 verified 2026-10-26; release installer + sign-off pending**
 
 ---
 
@@ -22,7 +22,7 @@
 |---|---|---|---|
 | **0** | Environment discovery, OBS connection, plugin verification, Rust scaffold | OBS reachable + plugins checked + workspace builds | ✅ Passed |
 | **1** | OBS bootstrap spike + 5 validation tests | All validation tests pass | ✅ Passed |
-| **2** | Tauri v2 + Svelte 5 studio UI and full V1 feature wiring | End-to-end acceptance demo | 🟡 In progress |
+| **2** | Tauri v2 + Svelte 5 studio UI and full V1 feature wiring | End-to-end acceptance demo | Local V1 verified |
 | **4** | Live chat, guests, overlays, stats | Future — do not start | 🚫 Deferred |
 
 ---
@@ -199,8 +199,8 @@ Check each required plugin and note its version/status:
 - [x] **P2-09** Aspect ratio multi-select: `Horizontal 16:9`, `Vertical 9:16`, plus `1:1` / `4:5` menu; apply to both canvases as selected.
 - [x] **P2-10** Record button: start/stop Hybrid MP4 (fallback MKV) with `SplitRecordFile` and configurable output path. **Verified:** split falls back to a close/reopen boundary when Hybrid MP4 rejects `SplitRecordFile`; both canvases produced two files per side after a split.
 - [x] **P2-10b** Visible recording path in the main UI, native folder picker (`rfd`) that applies `SetRecordDirectory`, last saved filename from `RecordStateChanged`, and Open in Explorer. **Verified:** folder/last-file display, picker wiring, Explorer launch, and vertical-only last-file tracking (16:9 and 9:16 files validated).
-- [ ] **P2-11** Go Live button: start/stop streaming, load key from keychain, sync Aitum Vertical + `obs-multi-rtmp` destinations. **Partial:** Aitum vendor destination sync and per-aspect start/stop are implemented; a successful end-to-end stream is blocked until Aitum contains a stream output and a destination/key is configured. Multi-RTMP has no configured targets.
-- [x] **P2-42** Aspect-aware recording/streaming: 16:9 only records/streams the main OBS output, 9:16 only uses the Aitum vertical output, and both produce two independent horizontal/vertical outputs. **Verified for recording:** separate `*.mp4` and `*-vertical.mp4` files, flags, and timecodes; streaming start/stop reports clear failures when no destination exists.
+- [x] **P2-11** Go Live button: start/stop streaming, load key from keychain, sync Aitum Vertical + `obs-multi-rtmp` destinations. **Verified locally:** Aitum vendor destination sync and per-aspect start/stop work with two local MediaMTX relays; Multi-RTMP targets remain unconfigured and no public destination was tested.
+- [x] **P2-42** Aspect-aware recording/streaming: 16:9 only records/streams the main OBS output, 9:16 only uses the Aitum vertical output, and both produce two independent horizontal/vertical outputs. **Verified:** separate files, flags, and timecodes for recording; H-only, V-only, and both-canvas local MediaMTX streaming also pass.
 - [x] **P2-44** Per-output REC/LIVE indicators (`H`, `V`, `H+V`) and vertical last-file tracking so 9:16-only recordings appear in the recording bar.
 - [x] **P2-12** Preview button: open native OBS projector via `OpenVideoMixProjector` for horizontal/vertical — **never** Virtual Camera.
 - [x] **P2-12b** Embedded live video preview in the center stage: 15 FPS JPEG frame streamer over `GetSourceScreenshot` for 16:9 and Aitum 9:16, with a schematic fallback only while disconnected. **Verified:** live 960×540 and 540×960 captures, including UUID-based vertical scene capture.
@@ -222,7 +222,7 @@ Check each required plugin and note its version/status:
 
 - [x] **P2-22** Camera picker: local webcam, phone/Continuity/DroidCam/Camo, or VDO.Ninja browser source; visibility toggle.
 - [x] **P2-23** Screen picker: full display or specific application window; visibility toggle.
-- [ ] **P2-24** Background removal toggle via `SetSourceFilterEnabled`; background image/color layer behind camera. **Background color/image verified.** Background-removal filter remains disabled pending visual validation because the installed plugin previously produced a white/transparent frame.
+- [ ] **P2-24** Background removal toggle via `SetSourceFilterEnabled`; background image/color layer behind camera. **Background color/image verified.** Filter creation, enable/disable, and the missing-filter "Unavailable" state are verified; final visual cutout sign-off is still pending.
 - [x] **P2-41** Explicit camera and screen Connect/Disconnect controls, separate from the eye visibility buttons. State and device selections persist; bootstrap reconnects or releases devices, and disconnecting the camera clears its device ID so the camera is not held indefinitely. **Verified:** release/reconnect and persistence across an app restart.
 - [x] **P2-25** Quick resize controls: corner snap `TL/TR/BL/BR`, camera size slider, `Circle ↔ Tile` toggle, side-by-side split ratio.
 - [x] **P2-26** Throttle live transform updates to ~30–60 Hz (30 ms), then send one final exact transform on pointer release.
@@ -244,7 +244,7 @@ Check each required plugin and note its version/status:
 
 ### 5.7 Acceptance & polish
 
-- [ ] **P2-45** Add a vertical stream output + test destination in Aitum Vertical and configure Multi-RTMP targets, then validate 16:9-only, 9:16-only, and both-canvas live streaming. **Blocked:** Aitum `stream_outputs` is empty and no RTMP destination/key is configured; start-failure paths are verified.
+- [x] **P2-45** Add a vertical stream output + test destination in Aitum Vertical and configure Multi-RTMP targets, then validate 16:9-only, 9:16-only, and both-canvas live streaming. **Verified locally:** Aitum vertical stream output, H-only, V-only, and both-canvas cases run against local MediaMTX; no public destination or real key was used.
 - [ ] **P2-35** End-to-end test: apply all 8 layouts on 16:9 and 9:16; toggle audio; remove background; quick-resize; record; stream to a test key; reconnect OBS.
 - [ ] **P2-36** Verify visual parity with the reference screenshot except deferred chat/stats items.
 - [ ] **P2-37** Performance check: near-zero idle CPU, reasonable RAM, fast startup; note release binary/installer size.
@@ -259,11 +259,11 @@ Check each required plugin and note its version/status:
 
 - [x] **P2F-00** Repo baseline: secret-safe `.gitignore` + `.env.example`, baseline commit, `phase2-wip` tag, push to GitHub.
 - [x] **P2F-01** Verification baseline: UI check/build, fmt, check, 11 tests pass.
-- [ ] **P2F-02** Dev isolation: `Vidyst_Dev` scene collection, `VIDYST_CONFIG_DIR=.dev-state`, `devctl` + reset/restore scripts, clean real profile.
-- [ ] **P2F-03** Streaming bring-up: state machine + degraded partial failure, local MediaMTX, three cases, vertical audio + encoder validation, 30-minute soak (`P2-11` / `P2-45`).
+- [x] **P2F-02** Dev isolation: `Vidyst_Dev` scene collection, `VIDYST_CONFIG_DIR=.dev-state`, `devctl` + reset/restore scripts, clean real profile.
+- [x] **P2F-03** Streaming bring-up: state machine + degraded partial failure, local MediaMTX, three cases, vertical audio + encoder validation, 30-minute soak (`P2-11` / `P2-45`). **Validated locally 2026-10-26:** 60 samples/31m8s; both outputs active, no reconnects or MediaMTX errors; desktop-load drops (H 2.6%, render 10.1%); no public/unlisted key was available.
 - [ ] **P2F-04** Background removal: diagnose model/filter, create once at bootstrap, toggle only, "Unavailable" state (`P2-24`).
-- [ ] **P2F-05** Preview performance + graceful degradation: 640 px, FPS setting, hidden/struggling pause, missing image fallback, no-camera placeholder (`P2-38` partial).
-- [ ] **P2F-06** Recording integrity: log split path, verify no silent gap, warn on fallback (`P2-10`).
+- [x] **P2F-05** Preview performance + graceful degradation: 640 px, FPS setting, hidden/struggling pause, missing image fallback, no-camera placeholder (`P2-38` partial).
+- [x] **P2F-06** Recording integrity: log split path, verify no silent gap, warn on fallback (`P2-10`).
 - [ ] **P2F-07** End-to-end matrix (`P2-35`).
 - [ ] **P2F-08** Performance/health metrics from OBS `GetStats` (`P2-37`).
 - [ ] **P2F-09** UI polish + visual parity + first-run health checklist (`P2-36`, `P2-38`).
@@ -331,3 +331,14 @@ Check each required plugin and note its version/status:
 | 2026-10-23 | P2F-00 | Secret-safe repo baseline committed, tagged `phase2-wip`, pushed to GitHub | Caught plaintext OBS password in `backups/`; backups + `.env` now ignored |
 | 2026-10-23 | P2F-01 | Verification baseline green | UI check 0/0, build OK, rustfmt applied, check OK, 11 tests pass |
 | 2026-10-23 | P2F-02..P2F-10 | Phase 2 finish program created | `TASKS-PHASE2-FINISH.md`; streaming moved early, dev isolation + reset plan added |
+| 2026-10-26 | P2F-02 | Isolated dev state and restore tooling verified | `Vidyst_Dev`, `.dev-state`, `.dev-recordings`, `devctl raw/restore` |
+| 2026-10-26 | P2F-03a..f, P2F-03h..i | Streaming state machine and local MediaMTX validation | H-only, V-only, both pass; vertical AAC 48 kHz stereo; QSV H.264 CBR 15 Mbps 1080x1920 |
+| 2026-10-26 | P2F-04e..f | Background-removal filter created once and toggled | Missing filter shows Unavailable; visual cutout sign-off still pending |
+| 2026-10-26 | P2F-05a..e | Preview, missing image, and camera degradation verified | 640 px captures, FPS 5-30, health backoff/recovery, camera placeholders |
+| 2026-10-26 | P2F-06a..d, P2-10 | Split fallback verified for 16:9, 9:16, and both | Native split rejected; measured 1.318-1.599 s 16:9 gap; warning/log present |
+| 2026-10-26 | P2F-07e, P2F-07g | Record+split+stream and Phase 0/1 cross-links complete | Full 8-layout matrix remains open |
+| 2026-10-26 | P2F-09c | First-run plugin checklist auto-surface verified | Settings/Plugins auto-opens and reports Plugin set ready |
+| 2026-10-26 | P2-11, P2-45 | Go Live and vertical output validated locally | Ports 1935/1936 MediaMTX; no public destination/key used |
+| 2026-10-26 | P2F-03g | 30-minute soak completed with desktop-load caveat | 60 samples over 31m8s; both active; 0 reconnects/MTX errors; H skip 2.6%, render skip 10.1% |
+| 2026-10-26 | cleanup | Real OBS/Aitum state restored and test processes stopped | Untitled / Vidyst_side_by_side / Move 350; stream server/key cleared; Aitum backup reapplied; `.dev-recordings` emptied; ports closed |
+| 2026-10-26 | final checks | Formatting, workspace check, all tests, UI check, and UI build pass | `cargo test --workspace` 19 passed; svelte-check 0 errors/0 warnings; Vite build succeeded |

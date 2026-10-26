@@ -13,7 +13,7 @@ use obws::{
     common::MonitorType,
     events::Event,
     requests::{
-        filters::{Create as CreateFilter, SetEnabled as SetFilterEnabled},
+        filters::SetEnabled as SetFilterEnabled,
         inputs::{Create as CreateInput, InputId, Volume},
         scene_items::SetEnabled as SetSceneItemEnabled,
         scenes::SceneId,
@@ -35,7 +35,7 @@ use vidyst_layouts::{
 use vidyst_obs_driver::{
     bootstrap::{
         current_vertical_scene, run_bootstrap, set_mask_radius, switch_vertical_scene,
-        trigger_morph, vertical_scene_uuid, BootstrapOptions, BootstrapReport,
+        trigger_morph, vertical_scene_uuid, BootstrapOptions, BootstrapReport, BACKGROUND_FILTER,
         CAMERA_DEFAULT_FRAME_INTERVAL, CAMERA_DEFAULT_RESOLUTION, CAMERA_GROUP, CAMERA_RAW,
         CIRCLE_RADIUS, MIC_SOURCE, MORPH_TO_CIRCLE, MORPH_TO_TILE, SCREEN_AUDIO_SOURCE,
         SCREEN_SOURCE, TILE_RADIUS, TRANSITION_DURATION_MS,
@@ -51,8 +51,6 @@ const EVENT_STUDIO: &str = "obs-event";
 const EVENT_PREVIEW_FRAME: &str = "obs-preview-frame";
 const EVENT_PREVIEW_ERROR: &str = "obs-preview-error";
 const EVENT_AUDIO_METERS: &str = "audio-meters";
-const BACKGROUND_FILTER: &str = "Vidyst_Background_Removal";
-const BACKGROUND_FILTER_KIND: &str = "background_removal";
 const WINDOW_SOURCE: &str = "Vidyst_Window";
 const WINDOW_INPUT_KIND: &str = "window_capture";
 const BACKGROUND_SOURCE: &str = "Vidyst_Background";
@@ -60,11 +58,14 @@ const BACKGROUND_INPUT_KIND: &str = "color_source_v3";
 const BACKGROUND_IMAGE_SOURCE: &str = "Vidyst_Background_Image";
 const BACKGROUND_IMAGE_INPUT_KIND: &str = "image_source";
 const VERTICAL_VENDOR: &str = "aitum-vertical-canvas";
-const PREVIEW_FPS: u64 = 15;
-const HORIZONTAL_PREVIEW_WIDTH: u32 = 960;
-const HORIZONTAL_PREVIEW_HEIGHT: u32 = 540;
-const VERTICAL_PREVIEW_WIDTH: u32 = 540;
-const VERTICAL_PREVIEW_HEIGHT: u32 = 960;
+const HORIZONTAL_PREVIEW_WIDTH: u32 = 640;
+const HORIZONTAL_PREVIEW_HEIGHT: u32 = 360;
+const VERTICAL_PREVIEW_WIDTH: u32 = 360;
+const VERTICAL_PREVIEW_HEIGHT: u32 = 640;
+const PREVIEW_HEALTH_INTERVAL: Duration = Duration::from_secs(5);
+const PREVIEW_BACKOFF_FPS: u64 = 2;
+const STREAM_COMMAND_TIMEOUT: Duration = Duration::from_secs(6);
+const RECORDING_COMMAND_TIMEOUT: Duration = Duration::from_secs(10);
 const VERTICAL_WIDTH: u32 = 1080;
 const VERTICAL_HEIGHT: u32 = 1920;
 const HORIZONTAL_WIDTH: f32 = 1920.0;
@@ -166,6 +167,48 @@ pub struct DeviceLists {
     pub windows: Vec<DeviceOption>,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum StreamPhase {
+    Idle,
+    Starting,
+    Live,
+    Stopping,
+    Degraded,
+    Error,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct StreamStatus {
+    pub phase: StreamPhase,
+    pub requested_horizontal: bool,
+    pub requested_vertical: bool,
+    pub horizontal_live: bool,
+    pub vertical_live: bool,
+    pub failed_targets: Vec<String>,
+    pub message: Option<String>,
+    pub retry_available: bool,
+    pub retry_mode: Option<String>,
+    pub updated_at_ms: u64,
+}
+
+impl Default for StreamStatus {
+    fn default() -> Self {
+        Self {
+            phase: StreamPhase::Idle,
+            requested_horizontal: false,
+            requested_vertical: false,
+            horizontal_live: false,
+            vertical_live: false,
+            failed_targets: Vec::new(),
+            message: None,
+            retry_available: false,
+            retry_mode: None,
+            updated_at_ms: now_ms(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Serialize)]
 pub struct StudioSnapshot {
     pub connected: bool,
@@ -192,6 +235,7 @@ pub struct StudioSnapshot {
     pub streaming_vertical: bool,
     pub stream_reconnecting: bool,
     pub stream_timecode: String,
+    pub stream_state: StreamStatus,
     pub camera: Option<DeviceSelection>,
     pub camera_connected: bool,
     pub screen: Option<DeviceSelection>,
@@ -202,6 +246,7 @@ pub struct StudioSnapshot {
     pub screen_visible: bool,
     pub camera_radius: f64,
     pub background_removal: bool,
+    pub background_removal_available: bool,
     pub background_mode: String,
     pub background_color: String,
     pub background_image: Option<String>,
@@ -216,6 +261,14 @@ pub struct PreviewFrame {
     pub width: u32,
     pub height: u32,
     pub at_ms: u64,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct SplitRecordingReport {
+    pub horizontal_path: String,
+    pub vertical_path: String,
+    pub gapless: bool,
+    pub message: String,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -270,10 +323,13 @@ pub struct ObsService {
     last_recording_path: Mutex<Option<String>>,
     vertical_record_started: Mutex<Option<Instant>>,
     vertical_stream_started: Mutex<Option<Instant>>,
+    stream_state: RwLock<StreamStatus>,
+    stream_operation: tokio::sync::Mutex<()>,
     generation: AtomicU64,
     preview_active: AtomicBool,
     preview_horizontal: AtomicBool,
     preview_vertical: AtomicBool,
+    preview_fps: AtomicU64,
     last_meter_emit: AtomicU64,
     reconnect: Notify,
     lost: Notify,
@@ -282,6 +338,7 @@ pub struct ObsService {
 impl ObsService {
     pub fn new(app: AppHandle) -> Arc<Self> {
         let settings = settings::load(&app);
+        let preview_fps = settings::normalize_preview_fps(settings.preview_fps) as u64;
         let (password, _) = load_websocket_password(None);
         let service = Arc::new(Self {
             app,
@@ -300,10 +357,13 @@ impl ObsService {
             last_recording_path: Mutex::new(None),
             vertical_record_started: Mutex::new(None),
             vertical_stream_started: Mutex::new(None),
+            stream_state: RwLock::new(StreamStatus::default()),
+            stream_operation: tokio::sync::Mutex::new(()),
             generation: AtomicU64::new(0),
             preview_active: AtomicBool::new(false),
             preview_horizontal: AtomicBool::new(true),
             preview_vertical: AtomicBool::new(true),
+            preview_fps: AtomicU64::new(preview_fps),
             last_meter_emit: AtomicU64::new(0),
             reconnect: Notify::new(),
             lost: Notify::new(),
@@ -329,6 +389,17 @@ impl ObsService {
 
     pub async fn status(&self) -> ConnectionStatus {
         self.status.read().await.clone()
+    }
+
+    async fn set_stream_status(&self, mut status: StreamStatus) {
+        status.updated_at_ms = now_ms();
+        let detail = serde_json::to_value(&status).unwrap_or(Value::Null);
+        *self.stream_state.write().await = status;
+        self.emit_event("stream_state", detail);
+    }
+
+    pub async fn stream_state(&self) -> StreamStatus {
+        self.stream_state.read().await.clone()
     }
 
     fn emit_event(&self, kind: impl Into<String>, detail: Value) {
@@ -389,6 +460,10 @@ impl ObsService {
                         let _ = self.sync_persisted_visuals(&client).await;
                     }
                     attempt = 0;
+                    let phase = self.stream_state.read().await.phase;
+                    if !matches!(phase, StreamPhase::Starting | StreamPhase::Stopping) {
+                        self.set_stream_status(StreamStatus::default()).await;
+                    }
 
                     let (obs_version, websocket_version, rpc_version) = match &version {
                         Some(v) => (
@@ -454,6 +529,33 @@ impl ObsService {
                     if let Some(task) = self.event_task.write().await.take() {
                         task.abort();
                     }
+                    let previous = self.stream_state.read().await.clone();
+                    if previous.horizontal_live
+                        || previous.vertical_live
+                        || matches!(
+                            previous.phase,
+                            StreamPhase::Starting
+                                | StreamPhase::Live
+                                | StreamPhase::Stopping
+                                | StreamPhase::Degraded
+                        )
+                    {
+                        self.set_stream_status(StreamStatus {
+                            phase: StreamPhase::Error,
+                            requested_horizontal: previous.requested_horizontal,
+                            requested_vertical: previous.requested_vertical,
+                            horizontal_live: false,
+                            vertical_live: false,
+                            failed_targets: Vec::new(),
+                            message: Some(
+                                "OBS disconnected while the stream was active.".to_owned(),
+                            ),
+                            retry_available: false,
+                            retry_mode: None,
+                            updated_at_ms: now_ms(),
+                        })
+                        .await;
+                    }
                     *self.client.write().await = None;
                     *self.bootstrap.write().await = None;
                 }
@@ -492,14 +594,49 @@ impl ObsService {
     }
 
     async fn preview_loop(self: Arc<Self>) {
-        let interval = Duration::from_millis(1000 / PREVIEW_FPS);
         let mut vertical_retry_at: Option<Instant> = None;
         let mut last_vertical_error: Option<String> = None;
+        let mut last_health_at: Option<Instant> = None;
+        let mut struggling = false;
         loop {
             if !self.preview_active.load(Ordering::Relaxed) || self.client.read().await.is_none() {
                 tokio::time::sleep(Duration::from_millis(200)).await;
                 continue;
             }
+
+            // Sampling OBS' frame health is cheap compared with a pair of
+            // screenshots. Back the preview off to a trickle while OBS is
+            // behind, then restore the user's chosen rate automatically.
+            if last_health_at.is_none_or(|at| at.elapsed() >= PREVIEW_HEALTH_INTERVAL) {
+                if let Some(client) = self.client.read().await.clone() {
+                    if let Ok(stats) = client.raw_request("GetStats", json!({})).await {
+                        let active_fps = stats
+                            .get("activeFps")
+                            .and_then(Value::as_f64)
+                            .unwrap_or(0.0);
+                        let render_ms = stats
+                            .get("averageFrameRenderTime")
+                            .and_then(Value::as_f64)
+                            .unwrap_or(0.0);
+                        let next = (active_fps > 0.0 && active_fps < 20.0) || render_ms > 30.0;
+                        if next != struggling {
+                            eprintln!(
+                                "preview health: active_fps={active_fps:.1} render_ms={render_ms:.1} struggling={next}"
+                            );
+                        }
+                        struggling = next;
+                    }
+                }
+                last_health_at = Some(Instant::now());
+            }
+
+            let configured_fps = self.preview_fps.load(Ordering::Relaxed).clamp(5, 30).max(1);
+            let effective_fps = if struggling {
+                configured_fps.min(PREVIEW_BACKOFF_FPS)
+            } else {
+                configured_fps
+            };
+            let interval = Duration::from_millis(1000 / effective_fps);
             let started = Instant::now();
             let capture_horizontal = self.preview_horizontal.load(Ordering::Relaxed);
             let capture_vertical = self.preview_vertical.load(Ordering::Relaxed)
@@ -930,6 +1067,15 @@ impl ObsService {
         Ok(())
     }
 
+    pub async fn update_preview_fps(&self, fps: u32) -> Result<()> {
+        let fps = settings::normalize_preview_fps(fps);
+        self.preview_fps.store(fps as u64, Ordering::Relaxed);
+        let mut settings = self.settings.write().await;
+        settings.preview_fps = fps;
+        settings::save(&self.app, &settings)?;
+        Ok(())
+    }
+
     pub async fn set_record_directory(&self, path: String) -> Result<StudioSnapshot> {
         let path = path.trim().to_owned();
         if path.is_empty() {
@@ -1056,7 +1202,9 @@ impl ObsService {
             None => (false, false),
         };
         let camera_radius = current_mask_radius(&client).await.unwrap_or(TILE_RADIUS);
-        let background_removal = background_removal_enabled(&client).await;
+        let background_removal_status = background_removal_status(&client).await;
+        let background_removal_available = background_removal_status.is_some();
+        let background_removal = background_removal_status.unwrap_or(false);
         let window = settings.window_value.as_ref().map(|value| DeviceSelection {
             name: settings
                 .window_name
@@ -1139,6 +1287,11 @@ impl ObsService {
         } else {
             vertical_elapsed(&self.vertical_stream_started, streaming_vertical)
         };
+        let stream_state = reconcile_stream_state(
+            self.stream_state.read().await.clone(),
+            streaming_horizontal,
+            streaming_vertical,
+        );
 
         Ok(StudioSnapshot {
             connected: status.connected,
@@ -1169,6 +1322,7 @@ impl ObsService {
             streaming_vertical,
             stream_reconnecting: streaming.as_ref().is_some_and(|value| value.reconnecting),
             stream_timecode,
+            stream_state,
             camera,
             camera_connected,
             screen,
@@ -1179,6 +1333,7 @@ impl ObsService {
             screen_visible,
             camera_radius,
             background_removal,
+            background_removal_available,
             background_mode: settings.background_mode,
             background_color: settings.background_color,
             background_image: settings.background_image,
@@ -1235,15 +1390,39 @@ impl ObsService {
                 }
             }
             "image" => {
-                if let Some(image) = settings.background_image.as_deref() {
-                    if Path::new(image).is_file()
-                        && self
+                let image = settings.background_image.clone();
+                if image
+                    .as_deref()
+                    .is_some_and(|path| Path::new(path).is_file())
+                {
+                    if let Some(image) = image.as_deref() {
+                        if self
                             .ensure_background_image_source(client, image)
                             .await
                             .is_ok()
-                    {
-                        let _ = self.sync_background(client, "image").await;
+                        {
+                            let _ = self.sync_background(client, "image").await;
+                        }
                     }
+                } else {
+                    // A saved image can disappear between runs (the picker
+                    // deliberately copies into temporary storage). Fall back
+                    // to no background layer, clear the stale path, and tell
+                    // the UI instead of leaving OBS on a broken source.
+                    {
+                        let mut settings = self.settings.write().await;
+                        settings.background_mode = "none".to_owned();
+                        settings.background_image = None;
+                        let _ = settings::save(&self.app, &settings);
+                    }
+                    let _ = self.sync_background(client, "none").await;
+                    self.emit_event(
+                        "background_missing",
+                        json!({
+                            "path": image,
+                            "message": "The saved background image is missing. Background layer turned off; choose another image."
+                        }),
+                    );
                 }
             }
             _ => {}
@@ -1515,16 +1694,9 @@ impl ObsService {
             .iter()
             .any(|filter| filter.name == BACKGROUND_FILTER)
         {
-            client
-                .filters()
-                .create(CreateFilter {
-                    source: SourceId::Name(CAMERA_RAW),
-                    filter: BACKGROUND_FILTER,
-                    kind: BACKGROUND_FILTER_KIND,
-                    settings: Some(json!({})),
-                })
-                .await
-                .context("create the background removal filter")?;
+            bail!(
+                "Background removal is unavailable. Install an OBS build with the background_removal filter and rerun scene setup."
+            );
         }
         client
             .filters()
@@ -2274,7 +2446,7 @@ impl ObsService {
         }
     }
 
-    pub async fn split_recording(&self) -> Result<()> {
+    pub async fn split_recording(&self) -> Result<SplitRecordingReport> {
         let client = self.client().await?;
         let horizontal_active = client.recording().status().await?.active;
         let vertical_active = vertical_output_status(&client)
@@ -2284,18 +2456,47 @@ impl ObsService {
         if !horizontal_active && !vertical_active {
             bail!("recording is not active");
         }
+
+        let mut horizontal_path = "inactive";
+        let mut vertical_path = "inactive";
+        let mut restarted = Vec::new();
         if horizontal_active {
-            if client.recording().split_file().await.is_err() {
-                // Hybrid MP4 rejects SplitRecordFile on some OBS builds.
-                // Close and reopen the output so the user still gets a file
-                // boundary instead of a failed split button.
+            let native_error = match tokio::time::timeout(
+                RECORDING_COMMAND_TIMEOUT,
+                client.recording().split_file(),
+            )
+            .await
+            {
+                Ok(Ok(())) => None,
+                Ok(Err(error)) => Some(format!("{error:#}")),
+                Err(_) => Some("the split request timed out".to_owned()),
+            };
+            if let Some(error) = native_error {
+                horizontal_path = "close/reopen fallback";
+                restarted.push("16:9");
+                eprintln!(
+                    "recording split: 16:9 native split failed ({error}); using close/reopen fallback"
+                );
+                // Hybrid MP4 and OBS 32 rejects SplitRecordFile for this
+                // output. Close and reopen the output so the user still gets a
+                // file boundary instead of a failed split button.
                 let settings = self.settings.read().await.clone();
-                client
-                    .recording()
-                    .stop()
+                eprintln!("recording split: stopping 16:9 recording for fallback");
+                match tokio::time::timeout(RECORDING_COMMAND_TIMEOUT, client.recording().stop())
                     .await
-                    .context("close the 16:9 recording for the split")?;
+                {
+                    Ok(Ok(_)) => {}
+                    Ok(Err(error)) => {
+                        eprintln!("recording split: 16:9 stop failed ({error:#})");
+                        bail!("The 16:9 recording could not stop for the split: {error:#}");
+                    }
+                    Err(_) => {
+                        eprintln!("recording split: 16:9 stop timed out");
+                        bail!("The 16:9 recording stop timed out during the split.");
+                    }
+                }
                 if !wait_for_main_recording(&client, false).await {
+                    eprintln!("recording split: 16:9 did not report stopped");
                     bail!("The 16:9 recording did not stop for the split.");
                 }
                 if let Some(path) = settings.record_path.as_deref() {
@@ -2304,141 +2505,506 @@ impl ObsService {
                         .await;
                 }
                 let _ = apply_recording_format(&client, &settings.record_format).await;
-                client
-                    .recording()
-                    .start()
+                eprintln!("recording split: starting next 16:9 recording");
+                match tokio::time::timeout(RECORDING_COMMAND_TIMEOUT, client.recording().start())
                     .await
-                    .context("start the next 16:9 recording after the split")?;
+                {
+                    Ok(Ok(_)) => {}
+                    Ok(Err(error)) => {
+                        eprintln!("recording split: 16:9 restart failed ({error:#})");
+                        bail!("The next 16:9 recording could not start after the split: {error:#}");
+                    }
+                    Err(_) => {
+                        eprintln!("recording split: 16:9 restart timed out");
+                        bail!("The next 16:9 recording start timed out after the split.");
+                    }
+                }
                 if !wait_for_main_recording(&client, true).await {
+                    eprintln!("recording split: next 16:9 recording did not become active");
                     bail!("The next 16:9 recording did not start after the split.");
                 }
+            } else {
+                horizontal_path = "native split";
             }
         }
         if vertical_active {
             // Aitum does not expose its split-file command. Stop and restart
             // the independent vertical recording to continue in a new file.
-            call_vertical_output(&client, "stop_recording")
-                .await
-                .context("close the current 9:16 recording")?;
-            if !wait_for_vertical(&client, Some(false), None).await {
+            vertical_path = "close/reopen fallback";
+            restarted.push("9:16");
+            eprintln!("recording split: stopping 9:16 recording for fallback");
+            match tokio::time::timeout(
+                RECORDING_COMMAND_TIMEOUT,
+                call_vertical_output(&client, "stop_recording"),
+            )
+            .await
+            {
+                Ok(Ok(())) => {}
+                Ok(Err(error)) => {
+                    eprintln!("recording split: 9:16 stop failed ({error:#})");
+                    bail!("The 9:16 recording could not stop for the split: {error:#}");
+                }
+                Err(_) => {
+                    eprintln!("recording split: 9:16 stop timed out");
+                    bail!("The 9:16 recording stop timed out during the split.");
+                }
+            }
+            if !wait_for_vertical_for(&client, Some(false), None, 100).await {
+                eprintln!("recording split: 9:16 did not report stopped");
                 bail!("Aitum did not stop the 9:16 recording for the split");
             }
-            call_vertical_output(&client, "start_recording")
-                .await
-                .context("start the next 9:16 recording after the split")?;
-            if !wait_for_vertical(&client, Some(true), None).await {
+            eprintln!("recording split: starting next 9:16 recording");
+            match tokio::time::timeout(
+                RECORDING_COMMAND_TIMEOUT,
+                call_vertical_output(&client, "start_recording"),
+            )
+            .await
+            {
+                Ok(Ok(())) => {}
+                Ok(Err(error)) => {
+                    eprintln!("recording split: 9:16 restart failed ({error:#})");
+                    bail!("The next 9:16 recording could not start after the split: {error:#}");
+                }
+                Err(_) => {
+                    eprintln!("recording split: 9:16 restart timed out");
+                    bail!("The next 9:16 recording start timed out after the split.");
+                }
+            }
+            if !wait_for_vertical_for(&client, Some(true), None, 100).await {
+                eprintln!("recording split: next 9:16 recording did not become active");
                 bail!("Aitum did not start the next 9:16 recording after the split");
             }
         }
-        Ok(())
+
+        let gapless =
+            horizontal_path != "close/reopen fallback" && vertical_path != "close/reopen fallback";
+        let message = if gapless {
+            "Recording split seamlessly.".to_owned()
+        } else {
+            format!(
+                "Recording split; {} restarted and may contain a short gap.",
+                restarted.join(" and ")
+            )
+        };
+        eprintln!(
+            "recording split: horizontal={horizontal_path} vertical={vertical_path} gapless={gapless}"
+        );
+        Ok(SplitRecordingReport {
+            horizontal_path: horizontal_path.to_owned(),
+            vertical_path: vertical_path.to_owned(),
+            gapless,
+            message,
+        })
     }
 
     pub async fn start_streaming(&self, horizontal: bool, vertical: bool) -> Result<()> {
         if !horizontal && !vertical {
             bail!("select at least one output canvas before going live");
         }
+        let _operation = self.stream_operation.lock().await;
         let client = self.client().await?;
-        // Keep the Aitum vertical canvas on the same layout as the horizontal
-        // program before any output starts. Multi-RTMP destinations are started
-        // by the plugin's own Sync Start setting when OBS goes live.
-        sync_vertical_scene_to_program(&client).await?;
+
+        let initial_horizontal = client
+            .streaming()
+            .status()
+            .await
+            .map(|status| status.active)
+            .unwrap_or(false);
+        let initial_vertical = vertical_output_status(&client)
+            .await
+            .map(|status| status.streaming)
+            .unwrap_or(false);
+
+        let mut status = StreamStatus {
+            phase: StreamPhase::Starting,
+            requested_horizontal: horizontal,
+            requested_vertical: vertical,
+            horizontal_live: initial_horizontal,
+            vertical_live: initial_vertical,
+            failed_targets: Vec::new(),
+            message: None,
+            retry_available: false,
+            retry_mode: None,
+            updated_at_ms: now_ms(),
+        };
+        self.set_stream_status(status.clone()).await;
+
+        if (!horizontal || initial_horizontal) && (!vertical || initial_vertical) {
+            status.phase = StreamPhase::Live;
+            self.set_stream_status(status).await;
+            return Ok(());
+        }
 
         let settings = self.settings.read().await.clone();
+        let server = settings
+            .stream_server
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty());
+        let key = settings::read_stream_key().filter(|value| !value.trim().is_empty());
+        let mut failures = Vec::new();
+
+        // Keep the Aitum vertical canvas on the horizontal program layout. A
+        // sync failure does not prevent the 9:16 encoder from starting, so it
+        // is surfaced as guidance instead of aborting the whole operation.
         if vertical {
-            if let (Some(server), Some(key)) = (
-                settings.stream_server.as_deref(),
-                settings::read_stream_key(),
-            ) {
-                set_vertical_stream_destination(&client, server, &key).await?;
+            if let Err(error) = sync_vertical_scene_to_program(&client).await {
+                status.message = Some(format!("9:16 scene sync: {error:#}"));
             }
         }
-        let mut main_started = false;
-        if horizontal {
-            if !client.streaming().status().await?.active {
-                if let (Some(server), Some(key)) =
-                    (settings.stream_server.clone(), settings::read_stream_key())
-                {
-                    client
-                        .raw_request(
-                            "SetStreamServiceSettings",
-                            json!({
-                                "streamServiceType": "rtmp_custom",
-                                "streamServiceSettings": {
-                                    "server": server,
-                                    "key": key,
-                                    "use_auth": false
-                                }
-                            }),
-                        )
-                        .await
-                        .context("apply the saved stream destination")?;
-                }
-                client
-                    .streaming()
-                    .start()
+
+        let mut horizontal_live = initial_horizontal;
+        if horizontal && !initial_horizontal {
+            let destination_ready = if let (Some(server), Some(key)) = (server, key.as_deref()) {
+                match client
+                    .raw_request(
+                        "SetStreamServiceSettings",
+                        json!({
+                            "streamServiceType": "rtmp_custom",
+                            "streamServiceSettings": {
+                                "server": server,
+                                "key": key,
+                                "use_auth": false
+                            }
+                        }),
+                    )
                     .await
-                    .context("start the 16:9 stream")?;
-                main_started = true;
-                if !wait_for_main_stream(&client, true).await {
-                    let _ = client.streaming().stop().await;
-                    bail!("The 16:9 stream did not start. Check the saved stream destination in Settings.");
+                {
+                    Ok(_) => true,
+                    Err(error) => {
+                        failures.push(format!(
+                            "The 16:9 destination could not be applied: {error:#}"
+                        ));
+                        false
+                    }
+                }
+            } else {
+                // No app-level destination: use whatever is configured in OBS.
+                true
+            };
+
+            if destination_ready {
+                match tokio::time::timeout(STREAM_COMMAND_TIMEOUT, client.streaming().start()).await
+                {
+                    Ok(Ok(())) => {
+                        let started = wait_for_main_stream(&client, true).await
+                            || client
+                                .streaming()
+                                .status()
+                                .await
+                                .map(|value| value.active)
+                                .unwrap_or(false);
+                        if started {
+                            horizontal_live = true;
+                        } else {
+                            failures.push(
+                                "The 16:9 stream did not start. Check the saved destination and OBS logs."
+                                    .to_owned(),
+                            );
+                        }
+                    }
+                    Ok(Err(error)) => {
+                        failures.push(format!("The 16:9 stream could not start: {error:#}"));
+                    }
+                    Err(_) => failures.push("The 16:9 start command timed out.".to_owned()),
                 }
             }
         }
 
-        if vertical {
-            let status = vertical_output_status(&client).await.unwrap_or_default();
-            if !status.streaming {
-                if let Err(error) = call_vertical_output(&client, "start_streaming").await {
-                    if main_started {
-                        let _ = client.streaming().stop().await;
+        status.horizontal_live = horizontal_live;
+        status.message = (!failures.is_empty()).then(|| failures.join(" "));
+        self.set_stream_status(status.clone()).await;
+
+        let mut vertical_live = initial_vertical;
+        if vertical && !initial_vertical {
+            let destination_ready = if let (Some(server), Some(key)) = (server, key.as_deref()) {
+                match set_vertical_stream_destination(&client, server, key).await {
+                    Ok(()) => true,
+                    Err(error) => {
+                        failures.push(format!(
+                            "The 9:16 destination could not be applied: {error:#}"
+                        ));
+                        false
                     }
-                    return Err(error);
                 }
-                if !wait_for_vertical(&client, None, Some(true)).await {
-                    let _ = call_vertical_output(&client, "stop_streaming").await;
-                    if main_started {
-                        let _ = client.streaming().stop().await;
+            } else {
+                // No app-level destination: use the destination configured in
+                // the Aitum Vertical dock.
+                true
+            };
+
+            if destination_ready {
+                match tokio::time::timeout(
+                    STREAM_COMMAND_TIMEOUT,
+                    call_vertical_output(&client, "start_streaming"),
+                )
+                .await
+                {
+                    Ok(Ok(())) => {
+                        let started = wait_for_vertical(&client, None, Some(true)).await
+                            || vertical_output_status(&client)
+                                .await
+                                .map(|value| value.streaming)
+                                .unwrap_or(false);
+                        if started {
+                            vertical_live = true;
+                            if let Ok(mut started) = self.vertical_stream_started.lock() {
+                                if started.is_none() {
+                                    *started = Some(Instant::now());
+                                }
+                            }
+                        } else {
+                            let _ = call_vertical_output(&client, "stop_streaming").await;
+                            failures.push(
+                                "The 9:16 stream did not start. Add a vertical stream output and destination in the Aitum Vertical dock, then try again."
+                                    .to_owned(),
+                            );
+                        }
                     }
-                    bail!(
-                        "The 9:16 stream did not start. Add a vertical stream output and destination in the Aitum Vertical dock, then try again."
-                    );
-                }
-            }
-            if let Ok(mut started) = self.vertical_stream_started.lock() {
-                if started.is_none() {
-                    *started = Some(Instant::now());
+                    Ok(Err(error)) => {
+                        failures.push(format!("The 9:16 stream could not start: {error:#}"));
+                    }
+                    Err(_) => failures.push("The 9:16 start command timed out.".to_owned()),
                 }
             }
         }
 
+        let actual_horizontal = client
+            .streaming()
+            .status()
+            .await
+            .map(|value| value.active)
+            .unwrap_or(horizontal_live);
+        let actual_vertical = vertical_output_status(&client)
+            .await
+            .map(|value| value.streaming)
+            .unwrap_or(vertical_live);
+        let requested_done = (!horizontal || actual_horizontal) && (!vertical || actual_vertical);
+        let any_live = actual_horizontal || actual_vertical;
+
+        status.horizontal_live = actual_horizontal;
+        status.vertical_live = actual_vertical;
+        status.phase = if requested_done {
+            StreamPhase::Live
+        } else if any_live {
+            StreamPhase::Degraded
+        } else {
+            StreamPhase::Error
+        };
+        status.failed_targets.clear();
+        if horizontal && !actual_horizontal {
+            status.failed_targets.push("16:9".to_owned());
+        }
+        if vertical && !actual_vertical {
+            status.failed_targets.push("9:16".to_owned());
+        }
+        status.message = (!failures.is_empty()).then(|| failures.join(" "));
+        status.retry_available = !requested_done;
+        status.retry_mode = (!requested_done).then(|| "start".to_owned());
+        self.set_stream_status(status.clone()).await;
+
+        if status.phase == StreamPhase::Error {
+            bail!(
+                "{}",
+                status
+                    .message
+                    .unwrap_or_else(|| "No stream output could be started.".to_owned())
+            );
+        }
         Ok(())
     }
 
+    pub async fn retry_streaming(&self) -> Result<()> {
+        let status = self.stream_state().await;
+        let mode = match status.retry_mode.as_deref() {
+            Some(mode) => Some(mode.to_owned()),
+            None => {
+                // The snapshot can derive a degraded state from outputs that
+                // changed outside the controller; reconstruct the action.
+                let client = self.client().await?;
+                let horizontal = client
+                    .streaming()
+                    .status()
+                    .await
+                    .map(|value| value.active)
+                    .unwrap_or(false);
+                let vertical = vertical_output_status(&client)
+                    .await
+                    .map(|value| value.streaming)
+                    .unwrap_or(false);
+                let requested_done = (!status.requested_horizontal || horizontal)
+                    && (!status.requested_vertical || vertical);
+                ((horizontal || vertical) && !requested_done).then(|| "start".to_owned())
+            }
+        };
+        match mode.as_deref() {
+            Some("start") => {
+                self.start_streaming(status.requested_horizontal, status.requested_vertical)
+                    .await
+            }
+            Some("stop") => self.stop_streaming().await,
+            _ => Ok(()),
+        }
+    }
+
     pub async fn stop_streaming(&self) -> Result<()> {
+        let _operation = self.stream_operation.lock().await;
         let client = self.client().await?;
+        let previous = self.stream_state().await;
+        let initial_horizontal = client
+            .streaming()
+            .status()
+            .await
+            .map(|status| status.active)
+            .unwrap_or(false);
+        let initial_vertical = vertical_output_status(&client)
+            .await
+            .map(|status| status.streaming)
+            .unwrap_or(false);
+        let mut status = StreamStatus {
+            phase: StreamPhase::Stopping,
+            requested_horizontal: previous.requested_horizontal || initial_horizontal,
+            requested_vertical: previous.requested_vertical || initial_vertical,
+            horizontal_live: initial_horizontal,
+            vertical_live: initial_vertical,
+            failed_targets: Vec::new(),
+            message: None,
+            retry_available: false,
+            retry_mode: None,
+            updated_at_ms: now_ms(),
+        };
+        self.set_stream_status(status.clone()).await;
+
         let mut errors = Vec::new();
-        if client.streaming().status().await?.active {
-            if let Err(error) = client.streaming().stop().await {
-                errors.push(format!("16:9 stream: {error:#}"));
+        // Stop both outputs at once so ending a dual stream does not leave the
+        // 9:16 leg running while the 16:9 wait times out.
+        let (horizontal_stop, vertical_stop) = tokio::join!(
+            async {
+                if initial_horizontal {
+                    match tokio::time::timeout(STREAM_COMMAND_TIMEOUT, client.streaming().stop())
+                        .await
+                    {
+                        Ok(Ok(())) => Ok(()),
+                        Ok(Err(error)) => Err(error.to_string()),
+                        Err(_) => Err("the command timed out".to_owned()),
+                    }
+                } else {
+                    Ok(())
+                }
+            },
+            async {
+                if initial_vertical {
+                    match tokio::time::timeout(
+                        STREAM_COMMAND_TIMEOUT,
+                        call_vertical_output(&client, "stop_streaming"),
+                    )
+                    .await
+                    {
+                        Ok(Ok(())) => Ok(()),
+                        Ok(Err(error)) => Err(format!("{error:#}")),
+                        Err(_) => Err("the command timed out".to_owned()),
+                    }
+                } else {
+                    Ok(())
+                }
+            }
+        );
+        if let Err(error) = horizontal_stop {
+            errors.push(format!("The 16:9 stream did not stop: {error}"));
+        }
+        if let Err(error) = vertical_stop {
+            errors.push(format!("The 9:16 stream did not stop: {error}"));
+        }
+
+        let (horizontal_stopped, vertical_stopped) = tokio::join!(
+            async {
+                if initial_horizontal {
+                    wait_for_main_stream(&client, false).await
+                } else {
+                    true
+                }
+            },
+            async {
+                if initial_vertical {
+                    wait_for_vertical(&client, None, Some(false)).await
+                } else {
+                    true
+                }
+            }
+        );
+        if initial_horizontal
+            && !horizontal_stopped
+            && client
+                .streaming()
+                .status()
+                .await
+                .map(|value| value.active)
+                .unwrap_or(false)
+        {
+            errors.push("The 16:9 stream did not stop.".to_owned());
+        }
+        if initial_vertical
+            && !vertical_stopped
+            && vertical_output_status(&client)
+                .await
+                .map(|value| value.streaming)
+                .unwrap_or(false)
+        {
+            errors.push("The 9:16 stream did not stop.".to_owned());
+        }
+
+        let actual_horizontal = client
+            .streaming()
+            .status()
+            .await
+            .map(|value| value.active)
+            .unwrap_or(false);
+        let actual_vertical = vertical_output_status(&client)
+            .await
+            .map(|value| value.streaming)
+            .unwrap_or(false);
+        if !actual_vertical {
+            if let Ok(mut started) = self.vertical_stream_started.lock() {
+                *started = None;
             }
         }
-        let vertical = vertical_output_status(&client).await.unwrap_or_default();
-        if vertical.streaming {
-            if let Err(error) = call_vertical_output(&client, "stop_streaming").await {
-                errors.push(format!("9:16 stream: {error:#}"));
-            } else if !wait_for_vertical(&client, None, Some(false)).await {
-                errors.push("The 9:16 stream did not stop.".to_owned());
-            }
-        }
-        if let Ok(mut started) = self.vertical_stream_started.lock() {
-            *started = None;
-        }
-        if errors.is_empty() {
-            Ok(())
+
+        status.horizontal_live = actual_horizontal;
+        status.vertical_live = actual_vertical;
+        status.failed_targets.clear();
+        status.message = (!errors.is_empty()).then(|| errors.join(" "));
+        if !actual_horizontal && !actual_vertical {
+            status.phase = StreamPhase::Idle;
+            status.requested_horizontal = false;
+            status.requested_vertical = false;
+            status.message = None;
+            status.retry_available = false;
+            status.retry_mode = None;
         } else {
-            bail!("{}", errors.join(" "));
+            status.phase = StreamPhase::Degraded;
+            if actual_horizontal {
+                status.failed_targets.push("16:9".to_owned());
+            }
+            if actual_vertical {
+                status.failed_targets.push("9:16".to_owned());
+            }
+            if status.message.is_none() {
+                status.message = Some("One or more outputs are still live.".to_owned());
+            }
+            status.retry_available = true;
+            status.retry_mode = Some("stop".to_owned());
         }
+        self.set_stream_status(status.clone()).await;
+
+        if actual_horizontal || actual_vertical {
+            bail!(
+                "{}",
+                status
+                    .message
+                    .unwrap_or_else(|| "One or more streams are still live.".to_owned())
+            );
+        }
+        Ok(())
     }
 
     pub async fn open_projector(&self, target: String) -> Result<()> {
@@ -2609,6 +3175,101 @@ impl ObsService {
     }
 }
 
+fn reconcile_stream_state(
+    mut status: StreamStatus,
+    horizontal_live: bool,
+    vertical_live: bool,
+) -> StreamStatus {
+    status.horizontal_live = horizontal_live;
+    status.vertical_live = vertical_live;
+    let any_live = horizontal_live || vertical_live;
+    let requested_done = (!status.requested_horizontal || horizontal_live)
+        && (!status.requested_vertical || vertical_live);
+
+    match status.phase {
+        StreamPhase::Starting => {
+            if requested_done {
+                status.phase = StreamPhase::Live;
+                status.message = None;
+                status.failed_targets.clear();
+                status.retry_available = false;
+                status.retry_mode = None;
+            }
+        }
+        StreamPhase::Stopping => {
+            if !any_live {
+                status.phase = StreamPhase::Idle;
+                status.message = None;
+                status.failed_targets.clear();
+                status.retry_available = false;
+                status.retry_mode = None;
+            }
+        }
+        StreamPhase::Idle => {
+            if any_live {
+                // Adopt outputs that were started outside the controller (for
+                // example from the OBS UI) or that survived an app restart.
+                status.requested_horizontal = horizontal_live;
+                status.requested_vertical = vertical_live;
+                status.phase = StreamPhase::Live;
+            }
+        }
+        StreamPhase::Live | StreamPhase::Degraded => {
+            if !any_live {
+                status.phase = StreamPhase::Idle;
+                status.message = None;
+                status.failed_targets.clear();
+                status.retry_available = false;
+                status.retry_mode = None;
+            } else if status.phase == StreamPhase::Degraded
+                && status.retry_mode.as_deref() == Some("stop")
+            {
+                // A failed stop must stay actionable even though both outputs
+                // still report live. Without this guard the next snapshot would
+                // mistake the surviving outputs for a healthy stream.
+                status.retry_available = true;
+                status.retry_mode = Some("stop".to_owned());
+                if status.message.is_none() {
+                    status.message = Some("One or more outputs are still live.".to_owned());
+                }
+            } else if !requested_done {
+                status.phase = StreamPhase::Degraded;
+                status.retry_available = true;
+                status.retry_mode = Some("start".to_owned());
+                if status.failed_targets.is_empty() {
+                    if status.requested_horizontal && !horizontal_live {
+                        status.failed_targets.push("16:9".to_owned());
+                    }
+                    if status.requested_vertical && !vertical_live {
+                        status.failed_targets.push("9:16".to_owned());
+                    }
+                }
+                if status.message.is_none() {
+                    status.message = Some("One or more outputs stopped unexpectedly.".to_owned());
+                }
+            } else {
+                status.phase = StreamPhase::Live;
+                status.message = None;
+                status.failed_targets.clear();
+                status.retry_available = false;
+                status.retry_mode = None;
+            }
+        }
+        StreamPhase::Error => {
+            if any_live {
+                status.phase = if requested_done {
+                    StreamPhase::Live
+                } else {
+                    StreamPhase::Degraded
+                };
+                status.retry_available = !requested_done;
+                status.retry_mode = (!requested_done).then(|| "start".to_owned());
+            }
+        }
+    }
+    status
+}
+
 fn now_ms() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -2765,7 +3426,16 @@ async fn wait_for_vertical(
     recording: Option<bool>,
     streaming: Option<bool>,
 ) -> bool {
-    for _ in 0..20 {
+    wait_for_vertical_for(client, recording, streaming, 20).await
+}
+
+async fn wait_for_vertical_for(
+    client: &Client,
+    recording: Option<bool>,
+    streaming: Option<bool>,
+    attempts: usize,
+) -> bool {
+    for _ in 0..attempts {
         tokio::time::sleep(Duration::from_millis(150)).await;
         let Ok(status) = vertical_output_status(client).await else {
             continue;
@@ -3004,7 +3674,7 @@ async fn current_mask_radius(client: &Client) -> Option<f64> {
         .and_then(Value::as_f64)
 }
 
-async fn background_removal_enabled(client: &Client) -> bool {
+async fn background_removal_status(client: &Client) -> Option<bool> {
     client
         .filters()
         .list(SourceId::Name(CAMERA_RAW))
@@ -3016,7 +3686,6 @@ async fn background_removal_enabled(client: &Client) -> bool {
                 .find(|filter| filter.name == BACKGROUND_FILTER)
                 .map(|filter| filter.enabled)
         })
-        .unwrap_or(false)
 }
 
 async fn apply_recording_format(client: &Client, format: &str) -> Result<()> {
@@ -3344,4 +4013,133 @@ fn save_presets(app: &AppHandle, presets: &[LayoutPreset]) -> Result<()> {
     let text = serde_json::to_string_pretty(presets)?;
     std::fs::write(&path, text).with_context(|| format!("write {}", path.display()))?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{reconcile_stream_state, StreamPhase, StreamStatus};
+
+    fn status(
+        phase: StreamPhase,
+        requested_horizontal: bool,
+        requested_vertical: bool,
+        horizontal_live: bool,
+        vertical_live: bool,
+    ) -> StreamStatus {
+        StreamStatus {
+            phase,
+            requested_horizontal,
+            requested_vertical,
+            horizontal_live,
+            vertical_live,
+            ..StreamStatus::default()
+        }
+    }
+
+    #[test]
+    fn starting_waits_for_every_requested_output() {
+        let status = reconcile_stream_state(
+            status(StreamPhase::Starting, true, true, false, false),
+            true,
+            false,
+        );
+        assert_eq!(status.phase, StreamPhase::Starting);
+
+        let status = reconcile_stream_state(status, true, true);
+        assert_eq!(status.phase, StreamPhase::Live);
+        assert!(!status.retry_available);
+        assert!(status.failed_targets.is_empty());
+    }
+
+    #[test]
+    fn live_output_lost_degrades_and_offers_retry() {
+        let status = reconcile_stream_state(
+            status(StreamPhase::Live, true, true, true, true),
+            true,
+            false,
+        );
+        assert_eq!(status.phase, StreamPhase::Degraded);
+        assert_eq!(status.failed_targets, vec!["9:16".to_owned()]);
+        assert!(status.retry_available);
+        assert_eq!(status.retry_mode.as_deref(), Some("start"));
+    }
+
+    #[test]
+    fn degraded_outputs_recovering_returns_to_live() {
+        let status = reconcile_stream_state(
+            status(StreamPhase::Degraded, true, true, true, false),
+            true,
+            true,
+        );
+        assert_eq!(status.phase, StreamPhase::Live);
+        assert!(!status.retry_available);
+        assert!(status.failed_targets.is_empty());
+    }
+
+    #[test]
+    fn losing_every_output_returns_to_idle() {
+        for phase in [StreamPhase::Live, StreamPhase::Degraded] {
+            let status =
+                reconcile_stream_state(status(phase, true, true, true, true), false, false);
+            assert_eq!(status.phase, StreamPhase::Idle);
+            assert!(!status.retry_available);
+            assert!(status.failed_targets.is_empty());
+        }
+    }
+
+    #[test]
+    fn stopping_stays_busy_until_the_last_output_ends() {
+        let status = reconcile_stream_state(
+            status(StreamPhase::Stopping, true, true, false, true),
+            false,
+            true,
+        );
+        assert_eq!(status.phase, StreamPhase::Stopping);
+
+        let status = reconcile_stream_state(status, false, false);
+        assert_eq!(status.phase, StreamPhase::Idle);
+    }
+
+    #[test]
+    fn idle_adopts_an_output_started_outside_the_controller() {
+        let status = reconcile_stream_state(
+            status(StreamPhase::Idle, false, false, false, false),
+            false,
+            true,
+        );
+        assert_eq!(status.phase, StreamPhase::Live);
+        assert!(!status.requested_horizontal);
+        assert!(status.requested_vertical);
+        assert!(status.vertical_live);
+    }
+
+    #[test]
+    fn error_with_one_surviving_output_becomes_degraded() {
+        let status = reconcile_stream_state(
+            status(StreamPhase::Error, true, true, false, false),
+            true,
+            false,
+        );
+        assert_eq!(status.phase, StreamPhase::Degraded);
+        assert!(status.retry_available);
+        assert_eq!(status.retry_mode.as_deref(), Some("start"));
+    }
+
+    #[test]
+    fn failed_stop_stays_degraded_even_while_outputs_report_live() {
+        let mut failed_stop = status(StreamPhase::Degraded, true, true, true, true);
+        failed_stop.retry_mode = Some("stop".to_owned());
+        failed_stop.retry_available = true;
+        failed_stop.failed_targets = vec!["16:9".to_owned(), "9:16".to_owned()];
+        failed_stop.message = Some("One or more outputs are still live.".to_owned());
+
+        let status = reconcile_stream_state(failed_stop, true, true);
+        assert_eq!(status.phase, StreamPhase::Degraded);
+        assert!(status.retry_available);
+        assert_eq!(status.retry_mode.as_deref(), Some("stop"));
+        assert_eq!(
+            status.message.as_deref(),
+            Some("One or more outputs are still live.")
+        );
+    }
 }

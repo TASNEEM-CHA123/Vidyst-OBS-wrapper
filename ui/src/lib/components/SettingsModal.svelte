@@ -5,6 +5,8 @@
 
   let {
     open,
+    initialTab = 'connection',
+    autoCheckPlugins = false,
     settings,
     status,
     busy = '',
@@ -12,10 +14,13 @@
     onSaveObs,
     onSaveRecording,
     onSaveStream,
+    onSavePreview,
     onReconnect,
     onPrepareScenes,
   }: {
     open: boolean
+    initialTab?: 'connection' | 'outputs' | 'plugins'
+    autoCheckPlugins?: boolean
     settings: SettingsView | null
     status: ConnectionStatus
     busy?: string
@@ -23,6 +28,7 @@
     onSaveObs: (host: string, port: number, password?: string) => void
     onSaveRecording: (path: string | null, format: string) => void
     onSaveStream: (server: string | null, key?: string) => void
+    onSavePreview: (fps: number) => void
     onReconnect: () => void
     onPrepareScenes: () => void
   } = $props()
@@ -36,9 +42,21 @@
   let recordFormat = $state('hybrid_mp4')
   let streamServer = $state('')
   let streamKey = $state('')
+  let previewFps = $state(15)
   let discovery = $state<DiscoveryReport | null>(null)
   let pluginBusy = $state(false)
   let pluginError = $state('')
+
+  $effect(() => {
+    if (!open) return
+    tab = initialTab
+  })
+
+  $effect(() => {
+    if (!open || !autoCheckPlugins || !status.connected) return
+    if (discovery || pluginBusy) return
+    void checkPlugins()
+  })
 
   $effect(() => {
     if (!open || !settings) return
@@ -49,6 +67,7 @@
     recordFormat = settings.record_format
     streamServer = settings.stream_server ?? ''
     streamKey = ''
+    previewFps = settings.preview_fps
   })
 
   function submitConnection(event: SubmitEvent) {
@@ -68,7 +87,13 @@
     streamKey = ''
   }
 
+  function submitPreview(event: SubmitEvent) {
+    event.preventDefault()
+    onSavePreview(Number(previewFps))
+  }
+
   async function checkPlugins() {
+    if (pluginBusy) return
     pluginBusy = true
     pluginError = ''
     try {
@@ -244,6 +269,38 @@
                 <p class="footnote">
                   V1 publishes to the OBS output plus the Multi RTMP plugin destinations configured in OBS.
                 </p>
+              </form>
+
+              <div class="divider"></div>
+
+              <h3>Preview performance</h3>
+              <form onsubmit={submitPreview}>
+                <label>
+                  <span>Preview rate</span>
+                  <select bind:value={previewFps}>
+                    <option value={5}>5 fps — lightest</option>
+                    <option value={10}>10 fps</option>
+                    <option value={15}>15 fps — default</option>
+                    <option value={20}>20 fps</option>
+                    <option value={30}>30 fps — smoothest</option>
+                  </select>
+                  <small>
+                    The ~640 px screenshot preview pauses while the window is hidden and backs off to
+                    2 fps automatically if OBS render health degrades.
+                  </small>
+                </label>
+                <div class="form-actions">
+                  <button type="submit" class="primary" disabled={busy === 'settings'}>
+                    Save preview rate
+                  </button>
+                  <button
+                    type="button"
+                    class="secondary"
+                    onclick={() => (previewFps = settings?.preview_fps ?? 15)}
+                  >
+                    Reset
+                  </button>
+                </div>
               </form>
             </section>
           {:else}

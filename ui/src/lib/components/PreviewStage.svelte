@@ -27,6 +27,7 @@
   let horizontalSlots = $derived(layout?.slots.R16x9 ?? [])
   let verticalSlots = $derived(layout?.slots.R9x16 ?? [])
   let cameraVisible = $derived(snapshot?.camera_visible ?? true)
+  let cameraConnected = $derived(snapshot?.camera_connected ?? true)
   let screenVisible = $derived(snapshot?.screen_visible ?? true)
   let backgroundRemoved = $derived(snapshot?.background_removal ?? false)
   let canvasStyle = $derived(
@@ -95,6 +96,12 @@
                   draggable="false"
                 />
                 <span class="live-badge"><span class="live-dot"></span>OBS LIVE</span>
+                {#if !cameraConnected && cameraVisible}
+                  <div class="camera-missing">
+                    <Icon name="camera" size={13} />
+                    <span>Camera disconnected</span>
+                  </div>
+                {/if}
               {:else}
                 <div class="live-wait">
                   <span class="wait-spinner"></span>
@@ -141,12 +148,19 @@
                   </div>
                 </div>
               {:else if item.source === 'Camera'}
-                <div class="camera-bg"></div>
-                <div class="camera-glow"></div>
-                <div class="person">
-                  <span class="head"></span>
-                  <span class="shoulders"></span>
-                </div>
+                {#if cameraConnected}
+                  <div class="camera-bg"></div>
+                  <div class="camera-glow"></div>
+                  <div class="person">
+                    <span class="head"></span>
+                    <span class="shoulders"></span>
+                  </div>
+                {:else}
+                  <div class="camera-off">
+                    <Icon name="camera" size={14} />
+                    <span>Camera disconnected</span>
+                  </div>
+                {/if}
                 <span class="source-tag"><Icon name="camera" size={10} /> CAM</span>
                 {#if backgroundRemoved}<span class="removed-tag">BG removed</span>{/if}
               {:else}
@@ -183,6 +197,12 @@
                   draggable="false"
                 />
                 <span class="live-badge compact"><span class="live-dot"></span>LIVE</span>
+                {#if !cameraConnected && cameraVisible}
+                  <div class="camera-missing compact">
+                    <Icon name="camera" size={10} />
+                    <span>Camera disconnected</span>
+                  </div>
+                {/if}
               {:else}
                 <div class="live-wait compact">
                   <span class="wait-spinner"></span>
@@ -226,12 +246,19 @@
                   </div>
                 </div>
               {:else if item.source === 'Camera'}
-                <div class="camera-bg"></div>
-                <div class="camera-glow"></div>
-                <div class="person">
-                  <span class="head"></span>
-                  <span class="shoulders"></span>
-                </div>
+                {#if cameraConnected}
+                  <div class="camera-bg"></div>
+                  <div class="camera-glow"></div>
+                  <div class="person">
+                    <span class="head"></span>
+                    <span class="shoulders"></span>
+                  </div>
+                {:else}
+                  <div class="camera-off compact">
+                    <Icon name="camera" size={11} />
+                    <span>No camera</span>
+                  </div>
+                {/if}
                 {#if backgroundRemoved}<span class="removed-tag">BG</span>{/if}
               {:else}
                 <span class="source-tag">Background</span>
@@ -523,6 +550,71 @@
     right: 5px;
     font-size: 7px;
     padding: 2px 4px;
+  }
+
+  .camera-missing {
+    position: absolute;
+    z-index: 5;
+    left: 50%;
+    bottom: 10px;
+    transform: translateX(-50%);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: calc(100% - 16px);
+    padding: 5px 9px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 120, 120, 0.3);
+    background: rgba(38, 17, 22, 0.82);
+    color: #ffb6b6;
+    font-size: 9px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    backdrop-filter: blur(6px);
+  }
+
+  .camera-missing span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .camera-missing.compact {
+    bottom: 5px;
+    gap: 3px;
+    padding: 3px 5px;
+    font-size: 6.5px;
+    max-width: calc(100% - 10px);
+  }
+
+  .camera-off {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 6px;
+    color: var(--text-faint);
+    font-size: 9px;
+    font-weight: 550;
+    text-align: center;
+    background:
+      radial-gradient(circle at 50% 35%, rgba(255, 120, 120, 0.08), transparent 60%),
+      rgba(8, 11, 16, 0.72);
+  }
+
+  .camera-off span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .camera-off.compact {
+    gap: 2px;
+    font-size: 6.5px;
+    padding: 3px;
   }
 
   @keyframes spin {

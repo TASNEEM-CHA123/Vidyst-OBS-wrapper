@@ -431,14 +431,24 @@
 
       <div class="toggle-row">
         <div>
-          <span class="field-label">Background removal</span>
-          <span class="field-help">Uses the OBS background removal filter</span>
+          <span class="field-label">
+            Background removal
+            {#if snapshot && !snapshot.background_removal_available}
+              <span class="unavailable">Unavailable</span>
+            {/if}
+          </span>
+          <span class="field-help">
+            {snapshot?.background_removal_available
+              ? 'Uses the OBS background removal filter'
+              : 'Install an OBS build with the background_removal filter'}
+          </span>
         </div>
         <label class="switch">
           <input
             type="checkbox"
+            aria-label="Background removal"
             checked={snapshot?.background_removal ?? false}
-            disabled={disabled || busy === 'background'}
+            disabled={disabled || busy === 'background' || !(snapshot?.background_removal_available ?? false)}
             onchange={(event) => onBackground(event.currentTarget.checked)}
           />
           <span class="switch-track"></span>
@@ -846,6 +856,19 @@
     margin-top: 2px;
     font-size: 8px;
     color: var(--text-faint);
+  }
+
+  .unavailable {
+    display: inline-block;
+    margin-left: 5px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: #ffc875;
+    background: rgba(242, 184, 93, 0.1);
+    font-size: 7.5px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
   }
 
   .field-line {

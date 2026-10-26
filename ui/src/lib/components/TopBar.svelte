@@ -35,6 +35,9 @@
   let projectorOpen = $state(false)
   let recording = $derived(snapshot?.recording ?? false)
   let streaming = $derived(snapshot?.streaming ?? false)
+  let streamPhase = $derived(snapshot?.stream_state.phase ?? 'Idle')
+  let streamBusy = $derived(streamPhase === 'Starting' || streamPhase === 'Stopping')
+  let streamProblem = $derived(streamPhase === 'Degraded' || streamPhase === 'Error')
   let recordTargets = $derived(
     snapshot?.recording_horizontal && snapshot?.recording_vertical
       ? 'H+V'
@@ -72,7 +75,23 @@
           : 'selected canvases',
   )
   let statusLabel = $derived(
-    streaming ? (recording ? 'LIVE + REC' : 'LIVE') : recording ? 'REC' : 'IDLE',
+    streamPhase === 'Starting'
+      ? 'STARTING'
+      : streamPhase === 'Stopping'
+        ? 'STOPPING'
+        : streamPhase === 'Degraded'
+          ? recording
+            ? 'DEGRADED + REC'
+            : 'DEGRADED'
+          : streamPhase === 'Error'
+            ? 'STREAM ERROR'
+            : streaming
+              ? recording
+                ? 'LIVE + REC'
+                : 'LIVE'
+              : recording
+                ? 'REC'
+                : 'IDLE',
   )
 
   function projector(target: 'horizontal' | 'vertical') {
@@ -145,9 +164,11 @@
       class="status-pill"
       class:live={streaming}
       class:rec={recording && !streaming}
-      title={recording || streaming
-        ? `${recording ? `Recording ${recordTargetLabel}` : ''}${recording && streaming ? ' · ' : ''}${streaming ? `Streaming ${streamTargetLabel}` : ''}`
-        : 'No output is active'}
+      class:degraded={streamProblem}
+      title={snapshot?.stream_state.message ??
+        (recording || streaming
+          ? `${recording ? `Recording ${recordTargetLabel}` : ''}${recording && streaming ? ' · ' : ''}${streaming ? `Streaming ${streamTargetLabel}` : ''}`
+          : 'No output is active')}
     >
       <span class="status-dot"></span>
       {statusLabel}
@@ -183,13 +204,26 @@
     <button
       type="button"
       class="action live"
-      class:active={streaming}
-      disabled={busy === 'live'}
+      class:active={streaming && !streamProblem}
+      class:degraded={streamProblem}
+      disabled={busy === 'live' || streamBusy}
       onclick={onLive}
-      title={streaming ? `End stream ${streamTargetLabel}` : 'Go live on the selected canvases'}
+      title={streamProblem
+        ? snapshot?.stream_state.message ?? 'The stream needs attention'
+        : streaming
+          ? `End stream ${streamTargetLabel}`
+          : 'Go live on the selected canvases'}
     >
       <Icon name="stream" size={15} />
-      <span>{streaming ? snapshot?.stream_timecode ?? 'LIVE' : 'Go live'}</span>
+      <span>
+        {streamPhase === 'Starting'
+          ? 'Starting…'
+          : streamPhase === 'Stopping'
+            ? 'Stopping…'
+            : streaming
+              ? snapshot?.stream_timecode ?? 'LIVE'
+              : 'Go live'}
+      </span>
       {#if streaming && streamTargets}
         <span class="target-chip">{streamTargets}</span>
       {/if}
@@ -461,6 +495,17 @@
     box-shadow: 0 0 7px rgba(150, 117, 255, 0.7);
   }
 
+  .status-pill.degraded {
+    color: #ffc875;
+    border-color: rgba(242, 184, 93, 0.28);
+    background: rgba(242, 184, 93, 0.08);
+  }
+
+  .status-pill.degraded .status-dot {
+    background: var(--warning);
+    box-shadow: 0 0 6px rgba(239, 187, 102, 0.55);
+  }
+
   .action {
     height: 31px;
     display: inline-flex;
@@ -539,6 +584,12 @@
     background: linear-gradient(135deg, #8b66ff, #6740e8);
     border-color: transparent;
     box-shadow: 0 4px 18px -8px rgba(133, 90, 255, 0.85);
+  }
+
+  .live.degraded {
+    color: #ffcf8a;
+    border-color: rgba(242, 184, 93, 0.32);
+    background: rgba(242, 184, 93, 0.09);
   }
 
   .projector-wrap {

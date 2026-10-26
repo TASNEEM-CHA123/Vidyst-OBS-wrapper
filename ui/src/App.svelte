@@ -44,6 +44,8 @@
   let toasts = $state<Toast[]>([])
   let busy = $state('')
   let settingsOpen = $state(false)
+  let settingsTab = $state<'connection' | 'outputs' | 'plugins'>('connection')
+  let settingsAutoCheck = $state(false)
   let devicesLoading = $state(false)
   let initializing = $state(true)
   let horizontalFrame = $state<string | null>(null)
@@ -58,6 +60,7 @@
   let refreshing = false
   let refreshQueued = false
   let disposed = false
+  let healthPrompted = false
 
   let activeLayout = $derived(
     layouts.find((layout) => layout.id === snapshot?.active_layout) ?? null,
@@ -92,6 +95,28 @@
       horizontalFrame = null
       verticalFrame = null
     }
+  })
+
+  // Surface the plugin checklist once on a new install, and on every launch
+  // while scene setup is still incomplete.
+  $effect(() => {
+    if (!isTauri || disposed || healthPrompted || !status.connected) return
+    let seen = false
+    try {
+      seen = window.localStorage.getItem('vidyst.firstRunChecklist') === '1'
+    } catch {
+      seen = false
+    }
+    if (seen && status.bootstrap_ready) return
+    healthPrompted = true
+    try {
+      window.localStorage.setItem('vidyst.firstRunChecklist', '1')
+    } catch {
+      // Private storage failure must not block the checklist.
+    }
+    settingsTab = 'plugins'
+    settingsAutoCheck = true
+    settingsOpen = true
   })
 
   onMount(() => {
@@ -206,12 +231,23 @@
     unlisteners.push(meterListener)
 
     const eventListener = await onStudioEvent<StudioEvent>('obs-event', (event) => {
+      if (event.kind === 'background_missing') {
+        const detail = event.detail as { message?: string } | null
+        notify(
+          'error',
+          detail?.message ??
+            'The saved background image is missing. Background layer turned off.',
+        )
+        scheduleRefresh(0)
+        return
+      }
       if (
         [
           'program_scene',
           'record',
           'record_file',
           'stream',
+          'stream_state',
           'mute',
           'volume',
           'monitor',
@@ -330,6 +366,21 @@
       return
     }
     aspects = next
+  }
+
+  function openSettings(
+    tab: 'connection' | 'outputs' | 'plugins' = 'connection',
+    autoCheck = false,
+  ) {
+    settingsTab = tab
+    settingsAutoCheck = autoCheck
+    settingsOpen = true
+  }
+
+  function closeSettings() {
+    settingsOpen = false
+    settingsAutoCheck = false
+    settingsTab = 'connection'
   }
 
   async function selectLayout(id: string) {
@@ -511,26 +562,85 @@
     )
   }
 
+  function degradedNote() {
+    const state = snapshot?.stream_state
+    if (!state || state.phase !== 'Degraded') return null
+    const targets = state.failed_targets.length
+      ? state.failed_targets.join(' + ')
+      : 'One output'
+    return `${targets} is not live.${state.message ? ` ${state.message}` : ''}`
+  }
+
   async function toggleStreaming() {
-    await perform(
-      'live',
-      async () => {
-        if (snapshot?.streaming || snapshot?.streaming_vertical) {
-          await api.stopStreaming()
-          await new Promise((resolve) => window.setTimeout(resolve, 320))
-          await refresh()
-        } else {
-          await api.startStreaming(aspects.horizontal, aspects.vertical)
-          await new Promise((resolve) => window.setTimeout(resolve, 320))
-          await refresh()
-        }
-      },
-      snapshot?.streaming || snapshot?.streaming_vertical ? 'Stream ended.' : 'You are live.',
-    )
+    if (busy) return
+    const wasLive = Boolean(snapshot?.streaming || snapshot?.streaming_vertical)
+    busy = 'live'
+    try {
+      if (wasLive) {
+        await api.stopStreaming()
+      } else {
+        await api.startStreaming(aspects.horizontal, aspects.vertical)
+      }
+      await new Promise((resolve) => window.setTimeout(resolve, 320))
+      await refresh()
+      const note = degradedNote()
+      if (note) {
+        notify('error', `Stream degraded. ${note}`)
+      } else if (wasLive) {
+        notify('success', 'Stream ended.')
+      } else {
+        notify('success', 'You are live.')
+      }
+    } catch (error) {
+      await new Promise((resolve) => window.setTimeout(resolve, 320))
+      await refresh()
+      const note = degradedNote()
+      notify('error', note ? `Stream degraded. ${note}` : messageFor(error))
+    } finally {
+      busy = ''
+    }
+  }
+
+  async function retryStreaming() {
+    if (busy) return
+    busy = 'live'
+    try {
+      await api.retryStreaming()
+      await new Promise((resolve) => window.setTimeout(resolve, 320))
+      await refresh()
+      const state = snapshot?.stream_state
+      const note = degradedNote()
+      if (note) {
+        notify('error', `Stream still degraded. ${note}`)
+      } else if (state?.phase === 'Live') {
+        notify('success', 'Stream is live.')
+      } else if (state?.phase === 'Error') {
+        notify('error', state.message ?? 'The stream could not be started.')
+      } else {
+        notify('success', 'Stream stopped.')
+      }
+    } catch (error) {
+      await new Promise((resolve) => window.setTimeout(resolve, 320))
+      await refresh()
+      const note = degradedNote()
+      notify('error', note ? `Stream still degraded. ${note}` : messageFor(error))
+    } finally {
+      busy = ''
+    }
   }
 
   async function splitRecording() {
-    await perform('split', () => api.splitRecording(), 'Recording split.')
+    busy = 'split'
+    try {
+      const report = await api.splitRecording()
+      await refresh()
+      notify(report.gapless ? 'success' : 'error', report.message)
+    } catch (error) {
+      await refresh()
+      notify('error', messageFor(error))
+    } finally {
+      busy = ''
+    }
   }
 
   function scrollRail(section: string) {
@@ -598,6 +708,17 @@
     )
   }
 
+  async function savePreview(fps: number) {
+    await perform(
+      'settings',
+      async () => {
+        await api.savePreviewSettings(fps)
+        await refreshAux()
+      },
+      'Preview rate saved.',
+    )
+  }
+
   async function savePreset(name: string) {
     const next = await perform(
       'preset',
@@ -630,7 +751,7 @@
     onLive={toggleStreaming}
     onSplit={splitRecording}
     onProjector={openProjector}
-    onSettings={() => (settingsOpen = true)}
+    onSettings={() => openSettings()}
     onAudio={() => scrollRail('audio-mixer')}
     onEdit={() => scrollRail('quick-customize')}
   />
@@ -645,7 +766,7 @@
       <button type="button" class="banner-btn" onclick={reconnect} disabled={busy === 'reconnect'}>
         Retry
       </button>
-      <button type="button" class="banner-btn ghost" onclick={() => (settingsOpen = true)}>
+      <button type="button" class="banner-btn ghost" onclick={() => openSettings()}>
         Connection settings
       </button>
     </div>
@@ -659,6 +780,37 @@
       <button type="button" class="banner-btn" onclick={prepareScenes} disabled={busy === 'prepare'}>
         {busy === 'prepare' ? 'Preparing…' : 'Prepare scenes'}
       </button>
+    </div>
+  {:else if snapshot && (snapshot.stream_state.phase === 'Degraded' || snapshot.stream_state.phase === 'Error')}
+    <div
+      class="banner stream-warning"
+      class:error={snapshot.stream_state.phase === 'Error'}
+    >
+      <span class="banner-icon"><Icon name="alert" size={15} /></span>
+      <div class="banner-copy">
+        <strong>{snapshot.stream_state.phase === 'Degraded' ? 'Stream degraded' : 'Stream failed'}</strong>
+        <span>{snapshot.stream_state.message ?? 'The stream is not fully live.'}</span>
+      </div>
+      {#if snapshot.stream_state.retry_available}
+        <button
+          type="button"
+          class="banner-btn"
+          onclick={retryStreaming}
+          disabled={busy === 'live'}
+        >
+          {busy === 'live' ? 'Retrying…' : 'Retry'}
+        </button>
+      {/if}
+      {#if snapshot.streaming}
+        <button
+          type="button"
+          class="banner-btn ghost"
+          onclick={toggleStreaming}
+          disabled={busy === 'live'}
+        >
+          End stream
+        </button>
+      {/if}
     </div>
   {/if}
 
@@ -724,13 +876,16 @@
 
   <SettingsModal
     open={settingsOpen}
+    initialTab={settingsTab}
+    autoCheckPlugins={settingsAutoCheck}
     {settings}
     {status}
     {busy}
-    onClose={() => (settingsOpen = false)}
+    onClose={closeSettings}
     onSaveObs={saveObs}
     onSaveRecording={saveRecording}
     onSaveStream={saveStream}
+    onSavePreview={savePreview}
     onReconnect={reconnect}
     onPrepareScenes={prepareScenes}
   />
@@ -797,6 +952,16 @@
   .banner.setup {
     border-color: rgba(242, 184, 93, 0.18);
     background: color-mix(in srgb, #2b2314 62%, var(--surface-1));
+  }
+
+  .banner.stream-warning {
+    border-color: rgba(242, 184, 93, 0.24);
+    background: color-mix(in srgb, #2b2314 62%, var(--surface-1));
+  }
+
+  .banner.stream-warning.error {
+    border-color: rgba(255, 105, 105, 0.24);
+    background: color-mix(in srgb, #2a1418 72%, var(--surface-1));
   }
 
   .banner-icon {

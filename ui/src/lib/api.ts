@@ -9,6 +9,7 @@ import type {
   LayoutPreset,
   QuickResizeRequest,
   SettingsView,
+  SplitRecordingReport,
   StudioSnapshot,
 } from './types'
 
@@ -77,10 +78,11 @@ export const api = {
   startRecording: (horizontal: boolean, vertical: boolean) =>
     command<void>('start_recording', { horizontal, vertical }),
   stopRecording: () => command<void>('stop_recording'),
-  splitRecording: () => command<void>('split_recording'),
+  splitRecording: () => command<SplitRecordingReport>('split_recording'),
   startStreaming: (horizontal: boolean, vertical: boolean) =>
     command<void>('start_streaming', { horizontal, vertical }),
   stopStreaming: () => command<void>('stop_streaming'),
+  retryStreaming: () => command<void>('retry_streaming'),
   projector: (target: 'horizontal' | 'vertical') =>
     command<void>('open_projector', { target }),
   pluginHealth: () => command<DiscoveryReport>('get_plugin_health'),
@@ -93,6 +95,8 @@ export const api = {
       server,
       key: key === undefined ? null : key,
     }),
+  savePreviewSettings: (fps: number) =>
+    command<void>('save_preview_settings', { fps }),
   presets: () => command<LayoutPreset[]>('list_presets'),
   savePreset: (name: string) => command<LayoutPreset[]>('save_preset', { name }),
   loadPreset: (name: string) => command<StudioSnapshot>('load_preset', { name }),

@@ -7,7 +7,7 @@ use vidyst_obs_driver::discovery::DiscoveryReport;
 use crate::{
     obs::{
         AudioChannel, ConnectionStatus, DeviceLists, LayoutPreset, ObsService, QuickResizeRequest,
-        StudioSnapshot,
+        SplitRecordingReport, StudioSnapshot,
     },
     settings::SettingsView,
 };
@@ -224,6 +224,14 @@ pub async fn set_preview_active(
 }
 
 #[tauri::command]
+pub async fn save_preview_settings(
+    service: State<'_, Arc<ObsService>>,
+    fps: u32,
+) -> Result<(), String> {
+    service.update_preview_fps(fps).await.map_err(error)
+}
+
+#[tauri::command]
 pub async fn pick_record_folder(
     service: State<'_, Arc<ObsService>>,
 ) -> Result<Option<StudioSnapshot>, String> {
@@ -302,7 +310,9 @@ pub async fn stop_recording(service: State<'_, Arc<ObsService>>) -> Result<(), S
 }
 
 #[tauri::command]
-pub async fn split_recording(service: State<'_, Arc<ObsService>>) -> Result<(), String> {
+pub async fn split_recording(
+    service: State<'_, Arc<ObsService>>,
+) -> Result<SplitRecordingReport, String> {
     service.split_recording().await.map_err(error)
 }
 
@@ -321,6 +331,11 @@ pub async fn start_streaming(
 #[tauri::command]
 pub async fn stop_streaming(service: State<'_, Arc<ObsService>>) -> Result<(), String> {
     service.stop_streaming().await.map_err(error)
+}
+
+#[tauri::command]
+pub async fn retry_streaming(service: State<'_, Arc<ObsService>>) -> Result<(), String> {
+    service.retry_streaming().await.map_err(error)
 }
 
 #[tauri::command]

@@ -51,6 +51,21 @@ export interface DeviceSelection {
   value: string
 }
 
+export type StreamPhase = 'Idle' | 'Starting' | 'Live' | 'Stopping' | 'Degraded' | 'Error'
+
+export interface StreamState {
+  phase: StreamPhase
+  requested_horizontal: boolean
+  requested_vertical: boolean
+  horizontal_live: boolean
+  vertical_live: boolean
+  failed_targets: string[]
+  message: string | null
+  retry_available: boolean
+  retry_mode: 'start' | 'stop' | null
+  updated_at_ms: number
+}
+
 export interface StudioSnapshot {
   connected: boolean
   bootstrap_ready: boolean
@@ -76,6 +91,7 @@ export interface StudioSnapshot {
   streaming_vertical: boolean
   stream_reconnecting: boolean
   stream_timecode: string
+  stream_state: StreamState
   camera: DeviceSelection | null
   camera_connected: boolean
   screen: DeviceSelection | null
@@ -86,6 +102,7 @@ export interface StudioSnapshot {
   screen_visible: boolean
   camera_radius: number
   background_removal: boolean
+  background_removal_available: boolean
   background_mode: 'none' | 'color' | 'image' | string
   background_color: string
   background_image: string | null
@@ -111,6 +128,13 @@ export interface QuickResizeRequest {
   split_pct?: number | null
 }
 
+export interface SplitRecordingReport {
+  horizontal_path: string
+  vertical_path: string
+  gapless: boolean
+  message: string
+}
+
 export interface SettingsView {
   obs_host: string
   obs_port: number
@@ -119,6 +143,7 @@ export interface SettingsView {
   record_path: string | null
   stream_server: string | null
   has_stream_key: boolean
+  preview_fps: number
   settings_path: string
 }
 

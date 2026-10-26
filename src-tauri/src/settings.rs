@@ -46,6 +46,8 @@ pub struct PersistedSettings {
     pub background_color: String,
     #[serde(default)]
     pub background_image: Option<String>,
+    #[serde(default = "default_preview_fps")]
+    pub preview_fps: u32,
 }
 
 impl Default for PersistedSettings {
@@ -68,6 +70,7 @@ impl Default for PersistedSettings {
             background_mode: default_background_mode(),
             background_color: default_background_color(),
             background_image: None,
+            preview_fps: default_preview_fps(),
         }
     }
 }
@@ -98,6 +101,16 @@ fn default_port() -> u16 {
 
 fn default_record_format() -> String {
     "hybrid_mp4".to_owned()
+}
+
+fn default_preview_fps() -> u32 {
+    15
+}
+
+/// Clamp preview rates to the supported range so old or hand-edited settings
+/// cannot starve OBS with an accidental 1000 FPS request.
+pub fn normalize_preview_fps(fps: u32) -> u32 {
+    fps.clamp(5, 30)
 }
 
 pub fn config_dir(app: &AppHandle) -> Result<PathBuf> {
@@ -184,6 +197,7 @@ pub struct SettingsView {
     pub record_path: Option<String>,
     pub stream_server: Option<String>,
     pub has_stream_key: bool,
+    pub preview_fps: u32,
     pub settings_path: String,
 }
 
@@ -196,6 +210,7 @@ pub fn view(app: &AppHandle, password: Option<&str>, settings: &PersistedSetting
         record_path: settings.record_path.clone(),
         stream_server: settings.stream_server.clone(),
         has_stream_key: read_stream_key().is_some(),
+        preview_fps: normalize_preview_fps(settings.preview_fps),
         settings_path: settings_path(app)
             .map(|path| path.display().to_string())
             .unwrap_or_default(),

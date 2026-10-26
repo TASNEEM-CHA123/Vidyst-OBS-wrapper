@@ -47,6 +47,7 @@ struct Args {
     vertical_scene: Option<String>,
     request_type: Option<String>,
     request_data: Value,
+    request_data_file: Option<PathBuf>,
     force_save: bool,
 }
 
@@ -66,6 +67,7 @@ impl Default for Args {
             vertical_scene: None,
             request_type: None,
             request_data: json!({}),
+            request_data_file: None,
             force_save: false,
         }
     }
@@ -119,9 +121,7 @@ fn main() -> Result<()> {
         };
         let (password, source) = load_websocket_password(explicit_password.as_deref());
         println!("credentials: {source:?}");
-        let client = Client::connect(&args.host, args.port, password.as_deref())
-            .await
-            .context("connect to OBS WebSocket")?;
+        let client = connect_with_retry(&args.host, args.port, password.as_deref()).await?;
 
         match args.command.as_str() {
             "save-original" => {
@@ -142,10 +142,41 @@ fn main() -> Result<()> {
                 println!("main scenes: {}", scenes.len());
             }
             "probe" => probe(&client, &args).await?,
+            "raw" => {
+                let request_type = args
+                    .request_type
+                    .as_deref()
+                    .context("raw requires --request-type")?;
+                let response = client
+                    .raw_request(request_type, args.request_data.clone())
+                    .await
+                    .with_context(|| format!("OBS request {request_type}"))?;
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&response).unwrap_or_default()
+                );
+            }
             other => bail!("unknown command {other}; use devctl --help"),
         }
         Ok(())
     })
+}
+
+async fn connect_with_retry(host: &str, port: u16, password: Option<&str>) -> Result<Client> {
+    let mut last_error = String::new();
+    for attempt in 0..120 {
+        match Client::connect(host, port, password).await {
+            Ok(client) => return Ok(client),
+            Err(error) => {
+                last_error = error.to_string();
+                if attempt == 0 || attempt % 10 == 0 {
+                    println!("waiting for OBS WebSocket on {host}:{port}... ({last_error})");
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+            }
+        }
+    }
+    bail!("could not connect to OBS WebSocket at {host}:{port} after 60s: {last_error}")
 }
 
 async fn setup_dev(client: &Client, args: &Args) -> Result<()> {
@@ -230,11 +261,25 @@ async fn restore(client: &Client, args: &Args) -> Result<()> {
     println!("restored scene collection: {collection}");
 
     let restore_args = Args {
-        scene: args.scene.clone().or_else(|| Some("Scene".to_owned())),
-        transition: args.transition.clone().or_else(|| Some("Fade".to_owned())),
+        scene: args
+            .scene
+            .clone()
+            .or_else(|| state.program_scene.clone())
+            .or_else(|| Some("Scene".to_owned())),
+        transition: args
+            .transition
+            .clone()
+            .or_else(|| state.transition.clone())
+            .or_else(|| Some("Fade".to_owned())),
+        duration_ms: if args.duration_ms == 300 {
+            state.transition_duration_ms.unwrap_or(args.duration_ms)
+        } else {
+            args.duration_ms
+        },
         vertical_scene: args
             .vertical_scene
             .clone()
+            .or_else(|| state.vertical_scene.clone())
             .or_else(|| Some("Vertical Scene".to_owned())),
         ..args_clone(args)
     };
@@ -258,6 +303,7 @@ fn args_clone(args: &Args) -> Args {
         vertical_scene: args.vertical_scene.clone(),
         request_type: args.request_type.clone(),
         request_data: args.request_data.clone(),
+        request_data_file: args.request_data_file.clone(),
         force_save: args.force_save,
     }
 }
@@ -279,24 +325,6 @@ async fn reset_active(client: &Client, args: &Args) -> Result<()> {
         println!("program scene: {scene}");
     } else {
         println!("program scene: kept (requested scene not present)");
-    }
-
-    // Transition.
-    let transition_name = args.transition.as_deref().unwrap_or("Fade");
-    let transitions = client.transitions().list().await?;
-    if transitions
-        .transitions
-        .iter()
-        .any(|transition| transition.id.name == transition_name)
-    {
-        client.transitions().set_current(transition_name).await?;
-        client
-            .transitions()
-            .set_current_duration(time::Duration::milliseconds(args.duration_ms as i64))
-            .await?;
-        println!("transition: {transition_name} {} ms", args.duration_ms);
-    } else {
-        println!("transition: kept ({transition_name} not present)");
     }
 
     // Vertical scene.
@@ -378,6 +406,25 @@ async fn reset_active(client: &Client, args: &Args) -> Result<()> {
                 .ok();
             println!("audio {input}: unmuted, monitoring off");
         }
+    }
+
+    // Set the transition last: switching the Aitum vertical scene can change the
+    // active main-canvas transition as a side effect.
+    let transition_name = args.transition.as_deref().unwrap_or("Fade");
+    let transitions = client.transitions().list().await?;
+    if transitions
+        .transitions
+        .iter()
+        .any(|transition| transition.id.name == transition_name)
+    {
+        client.transitions().set_current(transition_name).await?;
+        client
+            .transitions()
+            .set_current_duration(time::Duration::milliseconds(args.duration_ms as i64))
+            .await?;
+        println!("transition: {transition_name} {} ms", args.duration_ms);
+    } else {
+        println!("transition: kept ({transition_name} not present)");
     }
 
     Ok(())
@@ -634,7 +681,7 @@ fn parse_args() -> Result<Args> {
         match key.as_str() {
             "--help" | "-h" => {
                 println!(
-                    "devctl <save-original|setup-dev|reset|restore|status|probe> [options]\n\n\
+                    "devctl <save-original|setup-dev|reset|restore|status|probe|raw> [options]\n\n\
                      Options:\n\
                      \x20 --host HOST            default 127.0.0.1\n\
                      \x20 --port PORT            default 4455\n\
@@ -647,9 +694,10 @@ fn parse_args() -> Result<Args> {
                      \x20 --transition NAME      default Fade\n\
                      \x20 --duration-ms N        default 300\n\
                      \x20 --vertical-scene NAME  default Vertical Scene\n\
-                     probe options:\n\
+                     raw/probe options:\n\
                      \x20 --request-type NAME    Aitum vendor request\n\
-                     \x20 --data JSON            request payload (default {{}})\n\n\
+                     \x20 --data JSON            request payload (default {{}})\n\
+                     \x20 --data-file PATH       read the request payload from a JSON file\n\n\
                      setup-dev creates/switches to Vidyst_Dev and runs bootstrap.\n\
                      restore switches back to the saved collection and resets it."
                 );
@@ -674,6 +722,7 @@ fn parse_args() -> Result<Args> {
                 args.request_data =
                     serde_json::from_str(&value("--data")?).context("parse --data JSON")?
             }
+            "--data-file" => args.request_data_file = Some(PathBuf::from(value("--data-file")?)),
             "--force-save" => args.force_save = true,
             other if other.starts_with('-') => bail!("unknown argument {other}; use --help"),
             other => {
@@ -684,6 +733,12 @@ fn parse_args() -> Result<Args> {
                 }
             }
         }
+    }
+
+    if let Some(path) = &args.request_data_file {
+        let text = std::fs::read_to_string(path)
+            .with_context(|| format!("read --data-file {}", path.display()))?;
+        args.request_data = serde_json::from_str(&text).context("parse --data-file JSON")?;
     }
 
     Ok(args)

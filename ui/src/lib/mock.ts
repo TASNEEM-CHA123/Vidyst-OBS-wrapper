@@ -177,6 +177,18 @@ export const mockSnapshot = (): StudioSnapshot => {
     streaming_vertical: streamingVertical,
     stream_reconnecting: false,
     stream_timecode: '00:00:00',
+    stream_state: {
+      phase: streaming ? 'Live' : 'Idle',
+      requested_horizontal: streamingHorizontal,
+      requested_vertical: streamingVertical,
+      horizontal_live: streamingHorizontal,
+      vertical_live: streamingVertical,
+      failed_targets: [],
+      message: null,
+      retry_available: false,
+      retry_mode: null,
+      updated_at_ms: 0,
+    },
     camera: { name: 'HP Wide Vision HD Camera', value: 'demo-camera' },
     camera_connected: cameraConnected,
     screen: { name: '1920x1080 @ 0,0 (Primary Monitor)', value: 'demo-screen' },
@@ -187,6 +199,7 @@ export const mockSnapshot = (): StudioSnapshot => {
     screen_visible: layout.id !== 'just_me',
     camera_radius: cameraShape === 'circle' ? 540 : 86.4,
     background_removal: backgroundRemoval,
+    background_removal_available: true,
     background_mode: backgroundMode,
     background_color: backgroundColor,
     background_image: backgroundImage,
@@ -203,6 +216,7 @@ export const mockSettings = (): SettingsView => ({
   record_path: 'C:\\Users\\You\\Videos',
   stream_server: 'rtmp://live.example.com/app',
   has_stream_key: true,
+  preview_fps: 15,
   settings_path: 'C:\\Users\\You\\AppData\\Roaming\\com.vidyst.obs\\settings.json',
 })
 
@@ -283,7 +297,12 @@ export async function mockInvoke<T>(command: string, args?: Record<string, unkno
     case 'reconnect':
     case 'open_projector':
     case 'split_recording':
-      return undefined as T
+      return {
+        horizontal_path: 'native split',
+        vertical_path: 'inactive',
+        gapless: true,
+        message: 'Recording split seamlessly.',
+      } as T
     case 'prepare_scenes':
       return mockSnapshot() as T
     case 'apply_layout': {

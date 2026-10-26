@@ -44,6 +44,10 @@ pub const MASK_FILTER: &str = "Vidyst_Camera_Mask";
 pub const MORPH_TO_CIRCLE: &str = "Morph_To_Circle";
 /// Move Value filter that morphs the camera back to a rounded tile.
 pub const MORPH_TO_TILE: &str = "Morph_To_Tile";
+/// OBS background-removal filter created once during bootstrap.
+pub const BACKGROUND_FILTER: &str = "Vidyst_Background_Removal";
+/// obs-websocket filter kind used by [`BACKGROUND_FILTER`].
+pub const BACKGROUND_FILTER_KIND: &str = "background_removal";
 
 /// Required scene-transition duration.
 pub const TRANSITION_DURATION_MS: u64 = 350;
@@ -366,6 +370,10 @@ pub async fn run_bootstrap(client: &Client, options: &BootstrapOptions) -> Resul
     .await?;
 
     let filters = ensure_camera_filters(client, &mut requests).await?;
+    // Create the background-removal filter once. The controller only toggles
+    // it afterwards; if the OBS build lacks the filter kind, the UI reports
+    // "Unavailable" instead of trying to create it on every click.
+    ensure_background_removal_filter(client).await;
 
     obs_req!(
         requests,
@@ -949,6 +957,57 @@ async fn ensure_camera_filters(
         duration_ms: TRANSITION_DURATION_MS,
         enabled_after_bootstrap: enabled && !morphs_enabled,
     })
+}
+
+async fn ensure_background_removal_filter(client: &Client) {
+    let kinds = match client.filters().list_kinds().await {
+        Ok(kinds) => kinds,
+        Err(error) => {
+            tracing::warn!(error = %error, "could not list OBS filter kinds");
+            return;
+        }
+    };
+    if !kinds.iter().any(|kind| kind == BACKGROUND_FILTER_KIND) {
+        tracing::warn!(
+            kind = BACKGROUND_FILTER_KIND,
+            "OBS background removal filter kind is unavailable"
+        );
+        return;
+    }
+
+    let existing = match client
+        .filters()
+        .list(obws::requests::sources::SourceId::Name(CAMERA_RAW))
+        .await
+    {
+        Ok(filters) => filters,
+        Err(error) => {
+            tracing::warn!(error = %error, "could not list camera filters");
+            return;
+        }
+    };
+    if existing
+        .iter()
+        .any(|filter| filter.name == BACKGROUND_FILTER)
+    {
+        return;
+    }
+
+    match client
+        .filters()
+        .create(CreateFilter {
+            source: obws::requests::sources::SourceId::Name(CAMERA_RAW),
+            filter: BACKGROUND_FILTER,
+            kind: BACKGROUND_FILTER_KIND,
+            settings: Some(&json!({})),
+        })
+        .await
+    {
+        Ok(()) => tracing::info!("created the background removal filter"),
+        Err(error) => {
+            tracing::warn!(error = %error, "could not create the background removal filter")
+        }
+    }
 }
 
 async fn ensure_morph_filter(
