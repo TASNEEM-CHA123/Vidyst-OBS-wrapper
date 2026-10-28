@@ -23,7 +23,7 @@
 | Camera disconnect | Pass | "Camera disconnected" overlays; reconnect restores "Camera active." |
 | Preview performance | Pass with caveat | 640 px, 15 FPS default, 5-30 range, hidden pause, health backoff/recovery |
 | First-run/plugin checklist | Pass | OBS, WebSocket, 2 canvases, all five plugins green; auto-surfaces once |
-| Automated checks | Pass | `cargo fmt`, `cargo check`, 8 Rust tests, Svelte check/build |
+| Automated checks | Pass | `cargo fmt`, `cargo check`, 19 Rust tests (8 stream-state), Svelte check/build |
 
 ## Environment and isolation
 

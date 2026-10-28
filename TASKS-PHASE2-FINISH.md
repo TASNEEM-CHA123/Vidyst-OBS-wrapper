@@ -33,7 +33,7 @@
 - [x] **P2F-01b** `npm --prefix ui run build` → success.
 - [x] **P2F-01c** `cargo fmt --all -- --check` → initially failed; applied rustfmt (`ebbee73`); now clean.
 - [x] **P2F-01d** `cargo check --workspace --all-targets` → success.
-- [x] **P2F-01e** `cargo test --workspace` → 11 passed (9 layouts + 2 discovery).
+- [x] **P2F-01e** `cargo test --workspace` → 11 passed at baseline (9 layouts + 2 discovery); final tree has 19 passed after the Phase 2 additions.
 
 **Acceptance:** all five commands pass on the current tree.
 
